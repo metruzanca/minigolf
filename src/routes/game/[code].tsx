@@ -73,6 +73,7 @@ export default function Game() {
   const [maxScore, setMaxScore] = createSignal<number>(0);
   const [completedPlayersCollapsed, setCompletedPlayersCollapsed] =
     createSignal(true);
+  const [showMenu, setShowMenu] = createSignal(false);
   const [editingScore, setEditingScore] = createSignal<{
     playerId: number;
     playerName: string;
@@ -250,7 +251,7 @@ export default function Game() {
   };
 
   return (
-    <main class="min-h-screen bg-gray-50 pb-20">
+    <main class="min-h-screen bg-gray-50">
       <Show
         when={game()}
         fallback={
@@ -283,7 +284,51 @@ export default function Game() {
                 <div class="text-sm">
                   Game: <span class="font-mono font-bold">{g().shortCode}</span>
                 </div>
-                <div class="w-16"></div>
+                <div class="relative">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowMenu(!showMenu());
+                    }}
+                    class="min-h-[44px] min-w-[44px] flex items-center justify-center text-white hover:text-blue-200 transition-colors"
+                    aria-label="Menu"
+                  >
+                    <svg
+                      class="w-6 h-6"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M4 6h16M4 12h16M4 18h16"
+                      />
+                    </svg>
+                  </button>
+                  <Show when={showMenu()}>
+                    <div
+                      class="fixed inset-0 z-20"
+                      onClick={() => setShowMenu(false)}
+                    >
+                      <div
+                        class="absolute right-4 top-16 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-30"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button
+                          onClick={() => {
+                            setShowAddPlayerModal(true);
+                            setShowMenu(false);
+                          }}
+                          class="w-full text-left px-4 py-2 text-gray-900 hover:bg-gray-100 transition-colors"
+                        >
+                          Add Player
+                        </button>
+                      </div>
+                    </div>
+                  </Show>
+                </div>
               </div>
             </div>
 
@@ -439,18 +484,6 @@ export default function Game() {
                   </Show>
                 </div>
               </Show>
-            </div>
-
-            {/* Add Player Button */}
-            <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
-              <div class="max-w-2xl mx-auto">
-                <button
-                  onClick={() => setShowAddPlayerModal(true)}
-                  class="w-full min-h-[44px] bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
-                >
-                  Add Player
-                </button>
-              </div>
             </div>
 
             {/* Add Player Modal */}
