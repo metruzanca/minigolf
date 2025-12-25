@@ -18,6 +18,7 @@ import type { RouteDefinition } from "@solidjs/router";
 import { addGameCode } from "~/utils/gameStorage";
 import { HomeIcon } from "~/components/icons";
 import { Motion, Presence } from "solid-motionone";
+import { Meta } from "@solidjs/meta";
 
 // Maximum number of shots allowed (should match server-side MAX_SHOTS env var, default 10)
 const MAX_SHOTS = 10;
@@ -429,6 +430,32 @@ export default function Game() {
       });
   };
 
+  // Generate score text for social previews
+  const getScoreText = () => {
+    const g = game();
+    if (!g) return "";
+
+    const scoreboardPlayers = getScoreboardPlayers();
+    if (scoreboardPlayers.length === 0) {
+      return `Hole ${currentHole()}`;
+    }
+
+    const scoreParts = scoreboardPlayers.map((item, index) => {
+      const position = index + 1;
+      const suffix =
+        position === 1
+          ? "st"
+          : position === 2
+          ? "nd"
+          : position === 3
+          ? "rd"
+          : "th";
+      return `${position}${suffix} ${item.player.name}: ${item.totalScore}`;
+    });
+
+    return `${scoreParts.join(", ")}, Hole ${currentHole()}`;
+  };
+
   return (
     <main class="min-h-screen bg-gray-50">
       <Show
@@ -452,413 +479,47 @@ export default function Game() {
           </div>
         }
       >
-        {(g) => (
-          <>
-            {/* Header with game code */}
-            <div class="bg-blue-600 text-white p-3 sticky top-0 z-20">
-              <div class="max-w-2xl mx-auto flex items-center justify-between">
-                <a
-                  href="/"
-                  class="text-white hover:text-blue-200 font-medium min-h-[44px] min-w-[44px] flex items-center justify-center"
-                  aria-label="Home"
-                >
-                  <HomeIcon />
-                </a>
-                <div class="text-sm">
-                  Game: <span class="font-mono font-bold">{g().shortCode}</span>
-                </div>
-                <div class="relative">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowMenu(!showMenu());
-                    }}
-                    class="min-h-[44px] min-w-[44px] flex items-center justify-center text-white hover:text-blue-200 transition-colors"
-                    aria-label="Menu"
+        {(g) => {
+          const scoreText = getScoreText();
+          const gameTitle = `Game ${g().shortCode} - ${scoreText}`;
+          // Get the current URL for og:url
+          const gameUrl =
+            typeof window !== "undefined"
+              ? window.location.href
+              : `https://minigolf.up.railway.app/game/${g().shortCode}`;
+
+          return (
+            <>
+              <Meta property="og:title" content={gameTitle} />
+              <Meta property="og:description" content={scoreText} />
+              <Meta property="og:type" content="website" />
+              <Meta property="og:url" content={gameUrl} />
+              <Meta property="og:image" content="/favicon.svg" />
+              <Meta name="twitter:card" content="summary" />
+              <Meta name="twitter:title" content={gameTitle} />
+              <Meta name="twitter:description" content={scoreText} />
+              {/* Header with game code */}
+              <div class="bg-blue-600 text-white p-3 sticky top-0 z-20">
+                <div class="max-w-2xl mx-auto flex items-center justify-between">
+                  <a
+                    href="/"
+                    class="text-white hover:text-blue-200 font-medium min-h-[44px] min-w-[44px] flex items-center justify-center"
+                    aria-label="Home"
                   >
-                    <svg
-                      class="w-6 h-6"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M4 6h16M4 12h16M4 18h16"
-                      />
-                    </svg>
-                  </button>
-                  <Show when={showMenu()}>
-                    <div
-                      class="fixed inset-0 z-20"
-                      onClick={() => setShowMenu(false)}
-                    >
-                      <div
-                        class="absolute right-4 top-16 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-30"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <button
-                          onClick={() => {
-                            setShowAddPlayerModal(true);
-                            setShowMenu(false);
-                          }}
-                          class="w-full text-left px-4 py-2 text-gray-900 hover:bg-gray-100 transition-colors"
-                        >
-                          Add Player
-                        </button>
-                      </div>
-                    </div>
-                  </Show>
-                </div>
-              </div>
-            </div>
-
-            {/* Scoreboard */}
-            <div class="bg-white border-b border-gray-200 p-4 sticky top-[60px] z-10">
-              <div class="max-w-2xl mx-auto">
-                <div class="flex items-center justify-center gap-4 mb-3">
-                  <button
-                    onClick={navigateBack}
-                    disabled={viewingHoleNum() === 1}
-                    class="min-h-[44px] min-w-[44px] flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed text-gray-600 hover:text-gray-900"
-                  >
-                    ←
-                  </button>
-                  <h1 class="text-xl font-bold text-gray-900">
-                    Hole {viewingHoleNum()}
-                  </h1>
-                  <button
-                    onClick={navigateForward}
-                    disabled={viewingHoleNum() >= currentHole()}
-                    class="min-h-[44px] min-w-[44px] flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed text-gray-600 hover:text-gray-900"
-                  >
-                    →
-                  </button>
-                </div>
-                <div class="overflow-x-auto -mx-4 px-4">
-                  <div class="flex gap-3 min-w-max pb-2">
-                    <For each={getScoreboardPlayers()}>
-                      {(item, index) => (
-                        <div
-                          class="flex flex-col items-center justify-center p-4 rounded-lg min-w-[100px] shadow-sm border-2"
-                          style={{
-                            "background-color": item.player.ballColor,
-                            "border-color": item.player.ballColor,
-                            opacity: 0.9,
-                          }}
-                        >
-                          <span class="text-3xl font-bold text-white mb-2 drop-shadow-md">
-                            {item.totalScore}
-                          </span>
-                          <span class="text-sm font-medium text-white drop-shadow-md text-center">
-                            {item.player.name}
-                          </span>
-                        </div>
-                      )}
-                    </For>
+                    <HomeIcon />
+                  </a>
+                  <div class="text-sm">
+                    Game:{" "}
+                    <span class="font-mono font-bold">{g().shortCode}</span>
                   </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Player Cards */}
-            <div class="max-w-2xl mx-auto p-4 space-y-4">
-              <Presence exitBeforeEnter>
-                <Show when={viewingHoleNum()} keyed>
-                  {(holeNum) => {
-                    const slideDistance = 50;
-                    // Get direction from consolidated animation state
-                    const direction = animationState().direction;
-
-                    // When going forward: new content comes from right (positive), old content exits left (negative)
-                    // When going backward: new content comes from left (negative), old content exits right (positive)
-                    // If direction is null (first load), no animation
-                    const initialX =
-                      direction === null
-                        ? 0
-                        : direction === "forward"
-                        ? slideDistance
-                        : -slideDistance;
-
-                    const exitX =
-                      direction === null
-                        ? 0
-                        : direction === "forward"
-                        ? -slideDistance
-                        : slideDistance;
-
-                    return (
-                      <Motion.div
-                        initial={{
-                          opacity: 0,
-                          x: initialX,
-                        }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{
-                          opacity: 0,
-                          x: exitX,
-                        }}
-                        transition={{ duration: 0.3, easing: "ease-in-out" }}
-                        class="space-y-4"
-                      >
-                        <For each={getPlayersWithScores().active}>
-                          {({ player }) => (
-                            <div class="bg-white border border-gray-200 rounded-lg p-4">
-                              <div class="flex items-center gap-3 mb-4">
-                                <div
-                                  class="w-8 h-8 rounded-full border-2 border-gray-300"
-                                  style={{
-                                    "background-color": player.ballColor,
-                                  }}
-                                ></div>
-                                <h3 class="text-lg font-semibold text-gray-900">
-                                  {player.name}
-                                </h3>
-                              </div>
-                              <div class="grid grid-cols-5 gap-1.5">
-                                {getScoreOptions().map((score) => {
-                                  const shouldDim =
-                                    maxScore() > 0 && score < maxScore();
-                                  return (
-                                    <button
-                                      onClick={() =>
-                                        handleScore(player.id, score)
-                                      }
-                                      class={`min-h-[36px] py-1.5 px-2 rounded-md text-sm font-semibold transition-all ${
-                                        shouldDim
-                                          ? "opacity-40 bg-gray-100 text-gray-600 hover:opacity-60"
-                                          : "bg-blue-600 hover:bg-blue-700 text-white"
-                                      }`}
-                                    >
-                                      {score}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
-                        </For>
-
-                        {/* Completed Players */}
-                        <Show
-                          when={getPlayersWithScores().completed.length > 0}
-                        >
-                          <div class="bg-white border border-gray-200 rounded-lg">
-                            <button
-                              onClick={() =>
-                                setCompletedPlayersCollapsed(
-                                  !completedPlayersCollapsed()
-                                )
-                              }
-                              class="w-full p-4 flex items-center justify-between"
-                            >
-                              <span class="font-semibold text-gray-900">
-                                Completed (
-                                {getPlayersWithScores().completed.length})
-                              </span>
-                              <span class="text-gray-500">
-                                {completedPlayersCollapsed() ? "▼" : "▲"}
-                              </span>
-                            </button>
-                            <Show when={!completedPlayersCollapsed()}>
-                              <div class="p-4 pt-0 space-y-3">
-                                <For each={getPlayersWithScores().completed}>
-                                  {({ player, score }) => (
-                                    <button
-                                      onClick={() =>
-                                        setEditingScore({
-                                          playerId: player.id,
-                                          playerName: player.name,
-                                          playerColor: player.ballColor,
-                                          currentScore: score.score,
-                                          holeNumber: viewingHole(),
-                                        })
-                                      }
-                                      class="w-full flex items-center justify-between p-3 bg-gray-50 rounded hover:bg-gray-100 transition-colors"
-                                    >
-                                      <div class="flex items-center gap-3">
-                                        <div
-                                          class="w-6 h-6 rounded-full border border-gray-300"
-                                          style={{
-                                            "background-color":
-                                              player.ballColor,
-                                          }}
-                                        ></div>
-                                        <span class="font-medium text-gray-900">
-                                          {player.name}
-                                        </span>
-                                      </div>
-                                      <span class="font-semibold text-gray-900">
-                                        {score.score}
-                                      </span>
-                                    </button>
-                                  )}
-                                </For>
-                              </div>
-                            </Show>
-                          </div>
-                        </Show>
-
-                        {/* Add Hole / Summary Card - Show when all players have scores and viewing current hole */}
-                        <Show
-                          when={
-                            viewingHoleNum() === currentHole() &&
-                            getPlayersWithScores().active.length === 0 &&
-                            getPlayersWithScores().completed.length ===
-                              g().players.length &&
-                            g().players.length > 0
-                          }
-                        >
-                          <div class="bg-white border-2 border-blue-500 rounded-lg p-6 space-y-4">
-                            <h3 class="text-lg font-semibold text-gray-900 text-center">
-                              All players have completed this hole
-                            </h3>
-                            <div class="flex gap-3">
-                              <button
-                                onClick={handleAddHole}
-                                class="flex-1 min-h-[44px] bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
-                              >
-                                Add Hole
-                              </button>
-                              <button
-                                onClick={() => setShowSummaryModal(true)}
-                                class="flex-1 min-h-[44px] bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
-                              >
-                                Summary
-                              </button>
-                            </div>
-                          </div>
-                        </Show>
-                      </Motion.div>
-                    );
-                  }}
-                </Show>
-              </Presence>
-            </div>
-
-            {/* Add Player Modal */}
-            <Show when={showAddPlayerModal()}>
-              <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                <div class="bg-white rounded-lg p-6 max-w-md w-full space-y-4">
-                  <h3 class="text-xl font-bold text-gray-900">Add Player</h3>
-                  <div>
-                    <label
-                      for="newPlayerName"
-                      class="block text-sm font-medium text-gray-700 mb-2"
-                    >
-                      Player Name
-                    </label>
-                    <input
-                      id="newPlayerName"
-                      type="text"
-                      value={newPlayerName()}
-                      onInput={(e) => setNewPlayerName(e.currentTarget.value)}
-                      placeholder="Enter player name"
-                      class="w-full min-h-[44px] px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      for="newPlayerColor"
-                      class="block text-sm font-medium text-gray-700 mb-2"
-                    >
-                      Ball Color
-                    </label>
-                    <input
-                      id="newPlayerColor"
-                      type="color"
-                      value={newPlayerColor()}
-                      onInput={(e) => setNewPlayerColor(e.currentTarget.value)}
-                      class="h-10 w-full border border-gray-300 rounded cursor-pointer"
-                    />
-                  </div>
-                  <div class="flex gap-3">
+                  <div class="relative">
                     <button
-                      onClick={() => {
-                        setShowAddPlayerModal(false);
-                        setNewPlayerName("");
-                        setNewPlayerColor("#FF0000");
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowMenu(!showMenu());
                       }}
-                      class="flex-1 min-h-[44px] bg-gray-200 hover:bg-gray-300 text-gray-900 font-semibold py-2 px-4 rounded-lg transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handleAddPlayer}
-                      disabled={!newPlayerName().trim() || isAddingPlayer()}
-                      class="flex-1 min-h-[44px] bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold py-2 px-4 rounded-lg transition-colors"
-                    >
-                      {isAddingPlayer() ? "Adding..." : "Add"}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </Show>
-
-            {/* Edit Score Modal */}
-            <Show when={editingScore()}>
-              {(editing) => (
-                <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                  <div class="bg-white rounded-lg p-6 max-w-md w-full space-y-4">
-                    <h3 class="text-xl font-bold text-gray-900">
-                      Edit Score - {editing().playerName}
-                    </h3>
-                    <div class="flex items-center gap-3 mb-4">
-                      <div
-                        class="w-8 h-8 rounded-full border-2 border-gray-300"
-                        style={{ "background-color": editing().playerColor }}
-                      ></div>
-                      <div>
-                        <p class="text-sm text-gray-600">Current Score</p>
-                        <p class="text-lg font-semibold text-gray-900">
-                          {editing().currentScore}
-                        </p>
-                      </div>
-                    </div>
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-3">
-                        Select New Score
-                      </label>
-                      <div class="grid grid-cols-5 gap-1.5">
-                        {getScoreOptions().map((score) => (
-                          <button
-                            onClick={() =>
-                              handleScore(editing().playerId, score, true)
-                            }
-                            class="min-h-[36px] py-1.5 px-2 rounded-md text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors"
-                          >
-                            {score}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <div class="flex gap-3">
-                      <button
-                        onClick={() => setEditingScore(null)}
-                        class="flex-1 min-h-[44px] bg-gray-200 hover:bg-gray-300 text-gray-900 font-semibold py-2 px-4 rounded-lg transition-colors"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </Show>
-
-            {/* Summary Modal */}
-            <Show when={showSummaryModal()}>
-              <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-                <div class="bg-white rounded-lg p-6 max-w-4xl w-full my-8 space-y-6">
-                  <div class="flex items-center justify-between">
-                    <h3 class="text-2xl font-bold text-gray-900">
-                      Game Summary
-                    </h3>
-                    <button
-                      onClick={() => setShowSummaryModal(false)}
-                      class="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors"
-                      aria-label="Close"
+                      class="min-h-[44px] min-w-[44px] flex items-center justify-center text-white hover:text-blue-200 transition-colors"
+                      aria-label="Menu"
                     >
                       <svg
                         class="w-6 h-6"
@@ -870,164 +531,551 @@ export default function Game() {
                           stroke-linecap="round"
                           stroke-linejoin="round"
                           stroke-width="2"
-                          d="M6 18L18 6M6 6l12 12"
+                          d="M4 6h16M4 12h16M4 18h16"
                         />
                       </svg>
                     </button>
+                    <Show when={showMenu()}>
+                      <div
+                        class="fixed inset-0 z-20"
+                        onClick={() => setShowMenu(false)}
+                      >
+                        <div
+                          class="absolute right-4 top-16 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-30"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <button
+                            onClick={() => {
+                              setShowAddPlayerModal(true);
+                              setShowMenu(false);
+                            }}
+                            class="w-full text-left px-4 py-2 text-gray-900 hover:bg-gray-100 transition-colors"
+                          >
+                            Add Player
+                          </button>
+                        </div>
+                      </div>
+                    </Show>
                   </div>
+                </div>
+              </div>
 
-                  {/* Overall Standings */}
-                  <div>
-                    <h4 class="text-lg font-semibold text-gray-900 mb-3">
-                      Overall Standings
-                    </h4>
-                    <div class="space-y-2">
-                      <For each={getSummaryPlayers()}>
+              {/* Scoreboard */}
+              <div class="bg-white border-b border-gray-200 p-4 sticky top-[60px] z-10">
+                <div class="max-w-2xl mx-auto">
+                  <div class="flex items-center justify-center gap-4 mb-3">
+                    <button
+                      onClick={navigateBack}
+                      disabled={viewingHoleNum() === 1}
+                      class="min-h-[44px] min-w-[44px] flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed text-gray-600 hover:text-gray-900"
+                    >
+                      ←
+                    </button>
+                    <h1 class="text-xl font-bold text-gray-900">
+                      Hole {viewingHoleNum()}
+                    </h1>
+                    <button
+                      onClick={navigateForward}
+                      disabled={viewingHoleNum() >= currentHole()}
+                      class="min-h-[44px] min-w-[44px] flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed text-gray-600 hover:text-gray-900"
+                    >
+                      →
+                    </button>
+                  </div>
+                  <div class="overflow-x-auto -mx-4 px-4">
+                    <div class="flex gap-3 min-w-max pb-2">
+                      <For each={getScoreboardPlayers()}>
                         {(item, index) => (
                           <div
-                            class="flex items-center gap-4 p-3 rounded-lg border-2"
+                            class="flex flex-col items-center justify-center p-4 rounded-lg min-w-[100px] shadow-sm border-2"
                             style={{
+                              "background-color": item.player.ballColor,
                               "border-color": item.player.ballColor,
-                              "background-color": `${item.player.ballColor}15`,
+                              opacity: 0.9,
                             }}
                           >
-                            <div
-                              class="flex items-center justify-center w-8 h-8 rounded-full font-bold text-white text-sm"
-                              style={{
-                                "background-color": item.player.ballColor,
-                              }}
-                            >
-                              {index() + 1}
-                            </div>
-                            <div
-                              class="w-6 h-6 rounded-full border-2 border-gray-300"
-                              style={{
-                                "background-color": item.player.ballColor,
-                              }}
-                            ></div>
-                            <div class="flex-1">
-                              <p class="font-semibold text-gray-900">
-                                {item.player.name}
-                              </p>
-                              <p class="text-sm text-gray-600">
-                                {item.holesPlayed} hole
-                                {item.holesPlayed !== 1 ? "s" : ""} • Avg:{" "}
-                                {getSummaryAverageScore(item.player.id)}
-                              </p>
-                            </div>
-                            <div class="text-right">
-                              <p class="text-2xl font-bold text-gray-900">
-                                {item.totalScore}
-                              </p>
-                              <p class="text-xs text-gray-500">Total</p>
-                            </div>
+                            <span class="text-3xl font-bold text-white mb-2 drop-shadow-md">
+                              {item.totalScore}
+                            </span>
+                            <span class="text-sm font-medium text-white drop-shadow-md text-center">
+                              {item.player.name}
+                            </span>
                           </div>
                         )}
                       </For>
                     </div>
                   </div>
-
-                  {/* Per-Hole Breakdown */}
-                  <div>
-                    <h4 class="text-lg font-semibold text-gray-900 mb-3">
-                      Per-Hole Breakdown
-                    </h4>
-                    <div class="overflow-x-auto">
-                      <table class="w-full border-collapse">
-                        <thead>
-                          <tr class="bg-gray-100">
-                            <th class="text-left p-2 font-semibold text-gray-900 sticky left-0 bg-gray-100 z-10">
-                              Player
-                            </th>
-                            <For
-                              each={Array.from(
-                                { length: viewingHoleNum() },
-                                (_, i) => i + 1
-                              )}
-                            >
-                              {(holeNum) => (
-                                <th class="text-center p-2 font-semibold text-gray-900 min-w-[50px]">
-                                  H{holeNum}
-                                </th>
-                              )}
-                            </For>
-                            <th class="text-center p-2 font-semibold text-gray-900 bg-gray-100">
-                              Total
-                            </th>
-                            <th class="text-center p-2 font-semibold text-gray-900 bg-gray-100">
-                              Avg
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <For each={getSummaryPlayers()}>
-                            {(item) => (
-                              <tr class="border-b border-gray-200 hover:bg-gray-50">
-                                <td class="p-2 sticky left-0 bg-white z-10">
-                                  <div class="flex items-center gap-2">
-                                    <div
-                                      class="w-4 h-4 rounded-full border border-gray-300"
-                                      style={{
-                                        "background-color":
-                                          item.player.ballColor,
-                                      }}
-                                    ></div>
-                                    <span class="font-medium text-gray-900">
-                                      {item.player.name}
-                                    </span>
-                                  </div>
-                                </td>
-                                <For
-                                  each={Array.from(
-                                    { length: viewingHoleNum() },
-                                    (_, i) => i + 1
-                                  )}
-                                >
-                                  {(holeNum) => {
-                                    const score = getScoreForHole(
-                                      item.player.id,
-                                      holeNum
-                                    );
-                                    return (
-                                      <td class="text-center p-2">
-                                        {score !== null ? (
-                                          <span class="font-semibold text-gray-900">
-                                            {score}
-                                          </span>
-                                        ) : (
-                                          <span class="text-gray-400">-</span>
-                                        )}
-                                      </td>
-                                    );
-                                  }}
-                                </For>
-                                <td class="text-center p-2 font-bold text-gray-900 bg-gray-50">
-                                  {item.totalScore}
-                                </td>
-                                <td class="text-center p-2 font-semibold text-gray-700 bg-gray-50">
-                                  {getSummaryAverageScore(item.player.id)}
-                                </td>
-                              </tr>
-                            )}
-                          </For>
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-
-                  <div class="flex justify-end">
-                    <button
-                      onClick={() => setShowSummaryModal(false)}
-                      class="min-h-[44px] px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
-                    >
-                      Close
-                    </button>
-                  </div>
                 </div>
               </div>
-            </Show>
-          </>
-        )}
+
+              {/* Player Cards */}
+              <div class="max-w-2xl mx-auto p-4 space-y-4">
+                <Presence exitBeforeEnter>
+                  <Show when={viewingHoleNum()} keyed>
+                    {(holeNum) => {
+                      const slideDistance = 50;
+                      // Get direction from consolidated animation state
+                      const direction = animationState().direction;
+
+                      // When going forward: new content comes from right (positive), old content exits left (negative)
+                      // When going backward: new content comes from left (negative), old content exits right (positive)
+                      // If direction is null (first load), no animation
+                      const initialX =
+                        direction === null
+                          ? 0
+                          : direction === "forward"
+                          ? slideDistance
+                          : -slideDistance;
+
+                      const exitX =
+                        direction === null
+                          ? 0
+                          : direction === "forward"
+                          ? -slideDistance
+                          : slideDistance;
+
+                      return (
+                        <Motion.div
+                          initial={{
+                            opacity: 0,
+                            x: initialX,
+                          }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{
+                            opacity: 0,
+                            x: exitX,
+                          }}
+                          transition={{ duration: 0.3, easing: "ease-in-out" }}
+                          class="space-y-4"
+                        >
+                          <For each={getPlayersWithScores().active}>
+                            {({ player }) => (
+                              <div class="bg-white border border-gray-200 rounded-lg p-4">
+                                <div class="flex items-center gap-3 mb-4">
+                                  <div
+                                    class="w-8 h-8 rounded-full border-2 border-gray-300"
+                                    style={{
+                                      "background-color": player.ballColor,
+                                    }}
+                                  ></div>
+                                  <h3 class="text-lg font-semibold text-gray-900">
+                                    {player.name}
+                                  </h3>
+                                </div>
+                                <div class="grid grid-cols-5 gap-1.5">
+                                  {getScoreOptions().map((score) => {
+                                    const shouldDim =
+                                      maxScore() > 0 && score < maxScore();
+                                    return (
+                                      <button
+                                        onClick={() =>
+                                          handleScore(player.id, score)
+                                        }
+                                        class={`min-h-[36px] py-1.5 px-2 rounded-md text-sm font-semibold transition-all ${
+                                          shouldDim
+                                            ? "opacity-40 bg-gray-100 text-gray-600 hover:opacity-60"
+                                            : "bg-blue-600 hover:bg-blue-700 text-white"
+                                        }`}
+                                      >
+                                        {score}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </For>
+
+                          {/* Completed Players */}
+                          <Show
+                            when={getPlayersWithScores().completed.length > 0}
+                          >
+                            <div class="bg-white border border-gray-200 rounded-lg">
+                              <button
+                                onClick={() =>
+                                  setCompletedPlayersCollapsed(
+                                    !completedPlayersCollapsed()
+                                  )
+                                }
+                                class="w-full p-4 flex items-center justify-between"
+                              >
+                                <span class="font-semibold text-gray-900">
+                                  Completed (
+                                  {getPlayersWithScores().completed.length})
+                                </span>
+                                <span class="text-gray-500">
+                                  {completedPlayersCollapsed() ? "▼" : "▲"}
+                                </span>
+                              </button>
+                              <Show when={!completedPlayersCollapsed()}>
+                                <div class="p-4 pt-0 space-y-3">
+                                  <For each={getPlayersWithScores().completed}>
+                                    {({ player, score }) => (
+                                      <button
+                                        onClick={() =>
+                                          setEditingScore({
+                                            playerId: player.id,
+                                            playerName: player.name,
+                                            playerColor: player.ballColor,
+                                            currentScore: score.score,
+                                            holeNumber: viewingHole(),
+                                          })
+                                        }
+                                        class="w-full flex items-center justify-between p-3 bg-gray-50 rounded hover:bg-gray-100 transition-colors"
+                                      >
+                                        <div class="flex items-center gap-3">
+                                          <div
+                                            class="w-6 h-6 rounded-full border border-gray-300"
+                                            style={{
+                                              "background-color":
+                                                player.ballColor,
+                                            }}
+                                          ></div>
+                                          <span class="font-medium text-gray-900">
+                                            {player.name}
+                                          </span>
+                                        </div>
+                                        <span class="font-semibold text-gray-900">
+                                          {score.score}
+                                        </span>
+                                      </button>
+                                    )}
+                                  </For>
+                                </div>
+                              </Show>
+                            </div>
+                          </Show>
+
+                          {/* Add Hole / Summary Card - Show when all players have scores and viewing current hole */}
+                          <Show
+                            when={
+                              viewingHoleNum() === currentHole() &&
+                              getPlayersWithScores().active.length === 0 &&
+                              getPlayersWithScores().completed.length ===
+                                g().players.length &&
+                              g().players.length > 0
+                            }
+                          >
+                            <div class="bg-white border-2 border-blue-500 rounded-lg p-6 space-y-4">
+                              <h3 class="text-lg font-semibold text-gray-900 text-center">
+                                All players have completed this hole
+                              </h3>
+                              <div class="flex gap-3">
+                                <button
+                                  onClick={handleAddHole}
+                                  class="flex-1 min-h-[44px] bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+                                >
+                                  Add Hole
+                                </button>
+                                <button
+                                  onClick={() => setShowSummaryModal(true)}
+                                  class="flex-1 min-h-[44px] bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+                                >
+                                  Summary
+                                </button>
+                              </div>
+                            </div>
+                          </Show>
+                        </Motion.div>
+                      );
+                    }}
+                  </Show>
+                </Presence>
+              </div>
+
+              {/* Add Player Modal */}
+              <Show when={showAddPlayerModal()}>
+                <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                  <div class="bg-white rounded-lg p-6 max-w-md w-full space-y-4">
+                    <h3 class="text-xl font-bold text-gray-900">Add Player</h3>
+                    <div>
+                      <label
+                        for="newPlayerName"
+                        class="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Player Name
+                      </label>
+                      <input
+                        id="newPlayerName"
+                        type="text"
+                        value={newPlayerName()}
+                        onInput={(e) => setNewPlayerName(e.currentTarget.value)}
+                        placeholder="Enter player name"
+                        class="w-full min-h-[44px] px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        for="newPlayerColor"
+                        class="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Ball Color
+                      </label>
+                      <input
+                        id="newPlayerColor"
+                        type="color"
+                        value={newPlayerColor()}
+                        onInput={(e) =>
+                          setNewPlayerColor(e.currentTarget.value)
+                        }
+                        class="h-10 w-full border border-gray-300 rounded cursor-pointer"
+                      />
+                    </div>
+                    <div class="flex gap-3">
+                      <button
+                        onClick={() => {
+                          setShowAddPlayerModal(false);
+                          setNewPlayerName("");
+                          setNewPlayerColor("#FF0000");
+                        }}
+                        class="flex-1 min-h-[44px] bg-gray-200 hover:bg-gray-300 text-gray-900 font-semibold py-2 px-4 rounded-lg transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleAddPlayer}
+                        disabled={!newPlayerName().trim() || isAddingPlayer()}
+                        class="flex-1 min-h-[44px] bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+                      >
+                        {isAddingPlayer() ? "Adding..." : "Add"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </Show>
+
+              {/* Edit Score Modal */}
+              <Show when={editingScore()}>
+                {(editing) => (
+                  <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div class="bg-white rounded-lg p-6 max-w-md w-full space-y-4">
+                      <h3 class="text-xl font-bold text-gray-900">
+                        Edit Score - {editing().playerName}
+                      </h3>
+                      <div class="flex items-center gap-3 mb-4">
+                        <div
+                          class="w-8 h-8 rounded-full border-2 border-gray-300"
+                          style={{ "background-color": editing().playerColor }}
+                        ></div>
+                        <div>
+                          <p class="text-sm text-gray-600">Current Score</p>
+                          <p class="text-lg font-semibold text-gray-900">
+                            {editing().currentScore}
+                          </p>
+                        </div>
+                      </div>
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-3">
+                          Select New Score
+                        </label>
+                        <div class="grid grid-cols-5 gap-1.5">
+                          {getScoreOptions().map((score) => (
+                            <button
+                              onClick={() =>
+                                handleScore(editing().playerId, score, true)
+                              }
+                              class="min-h-[36px] py-1.5 px-2 rounded-md text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+                            >
+                              {score}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div class="flex gap-3">
+                        <button
+                          onClick={() => setEditingScore(null)}
+                          class="flex-1 min-h-[44px] bg-gray-200 hover:bg-gray-300 text-gray-900 font-semibold py-2 px-4 rounded-lg transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </Show>
+
+              {/* Summary Modal */}
+              <Show when={showSummaryModal()}>
+                <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+                  <div class="bg-white rounded-lg p-6 max-w-4xl w-full my-8 space-y-6">
+                    <div class="flex items-center justify-between">
+                      <h3 class="text-2xl font-bold text-gray-900">
+                        Game Summary
+                      </h3>
+                      <button
+                        onClick={() => setShowSummaryModal(false)}
+                        class="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors"
+                        aria-label="Close"
+                      >
+                        <svg
+                          class="w-6 h-6"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+
+                    {/* Overall Standings */}
+                    <div>
+                      <h4 class="text-lg font-semibold text-gray-900 mb-3">
+                        Overall Standings
+                      </h4>
+                      <div class="space-y-2">
+                        <For each={getSummaryPlayers()}>
+                          {(item, index) => (
+                            <div
+                              class="flex items-center gap-4 p-3 rounded-lg border-2"
+                              style={{
+                                "border-color": item.player.ballColor,
+                                "background-color": `${item.player.ballColor}15`,
+                              }}
+                            >
+                              <div
+                                class="flex items-center justify-center w-8 h-8 rounded-full font-bold text-white text-sm"
+                                style={{
+                                  "background-color": item.player.ballColor,
+                                }}
+                              >
+                                {index() + 1}
+                              </div>
+                              <div
+                                class="w-6 h-6 rounded-full border-2 border-gray-300"
+                                style={{
+                                  "background-color": item.player.ballColor,
+                                }}
+                              ></div>
+                              <div class="flex-1">
+                                <p class="font-semibold text-gray-900">
+                                  {item.player.name}
+                                </p>
+                                <p class="text-sm text-gray-600">
+                                  {item.holesPlayed} hole
+                                  {item.holesPlayed !== 1 ? "s" : ""} • Avg:{" "}
+                                  {getSummaryAverageScore(item.player.id)}
+                                </p>
+                              </div>
+                              <div class="text-right">
+                                <p class="text-2xl font-bold text-gray-900">
+                                  {item.totalScore}
+                                </p>
+                                <p class="text-xs text-gray-500">Total</p>
+                              </div>
+                            </div>
+                          )}
+                        </For>
+                      </div>
+                    </div>
+
+                    {/* Per-Hole Breakdown */}
+                    <div>
+                      <h4 class="text-lg font-semibold text-gray-900 mb-3">
+                        Per-Hole Breakdown
+                      </h4>
+                      <div class="overflow-x-auto">
+                        <table class="w-full border-collapse">
+                          <thead>
+                            <tr class="bg-gray-100">
+                              <th class="text-left p-2 font-semibold text-gray-900 sticky left-0 bg-gray-100 z-10">
+                                Player
+                              </th>
+                              <For
+                                each={Array.from(
+                                  { length: viewingHoleNum() },
+                                  (_, i) => i + 1
+                                )}
+                              >
+                                {(holeNum) => (
+                                  <th class="text-center p-2 font-semibold text-gray-900 min-w-[50px]">
+                                    H{holeNum}
+                                  </th>
+                                )}
+                              </For>
+                              <th class="text-center p-2 font-semibold text-gray-900 bg-gray-100">
+                                Total
+                              </th>
+                              <th class="text-center p-2 font-semibold text-gray-900 bg-gray-100">
+                                Avg
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <For each={getSummaryPlayers()}>
+                              {(item) => (
+                                <tr class="border-b border-gray-200 hover:bg-gray-50">
+                                  <td class="p-2 sticky left-0 bg-white z-10">
+                                    <div class="flex items-center gap-2">
+                                      <div
+                                        class="w-4 h-4 rounded-full border border-gray-300"
+                                        style={{
+                                          "background-color":
+                                            item.player.ballColor,
+                                        }}
+                                      ></div>
+                                      <span class="font-medium text-gray-900">
+                                        {item.player.name}
+                                      </span>
+                                    </div>
+                                  </td>
+                                  <For
+                                    each={Array.from(
+                                      { length: viewingHoleNum() },
+                                      (_, i) => i + 1
+                                    )}
+                                  >
+                                    {(holeNum) => {
+                                      const score = getScoreForHole(
+                                        item.player.id,
+                                        holeNum
+                                      );
+                                      return (
+                                        <td class="text-center p-2">
+                                          {score !== null ? (
+                                            <span class="font-semibold text-gray-900">
+                                              {score}
+                                            </span>
+                                          ) : (
+                                            <span class="text-gray-400">-</span>
+                                          )}
+                                        </td>
+                                      );
+                                    }}
+                                  </For>
+                                  <td class="text-center p-2 font-bold text-gray-900 bg-gray-50">
+                                    {item.totalScore}
+                                  </td>
+                                  <td class="text-center p-2 font-semibold text-gray-700 bg-gray-50">
+                                    {getSummaryAverageScore(item.player.id)}
+                                  </td>
+                                </tr>
+                              )}
+                            </For>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <div class="flex justify-end">
+                      <button
+                        onClick={() => setShowSummaryModal(false)}
+                        class="min-h-[44px] px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
+                      >
+                        Close
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </Show>
+            </>
+          );
+        }}
       </Show>
     </main>
   );
