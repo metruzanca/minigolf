@@ -4,6 +4,7 @@
   "scripts": {
     "dev": "vinxi dev",
     "build": "vinxi build",
+    "prestart": "drizzle-kit push",
     "start": "vinxi start",
     "dev:fresh": "rm drizzle/db.sqlite && npx drizzle-kit push && vinxi dev"
   },
