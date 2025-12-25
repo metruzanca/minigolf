@@ -401,9 +401,25 @@ export default function Game() {
             {/* Scoreboard */}
             <div class="bg-white border-b border-gray-200 p-4 sticky top-[60px] z-10">
               <div class="max-w-2xl mx-auto">
-                <h1 class="text-xl font-bold text-gray-900 mb-3">
-                  Hole {viewingHoleNum()}
-                </h1>
+                <div class="flex items-center justify-center gap-4 mb-3">
+                  <button
+                    onClick={() => navigateToHole(viewingHoleNum() - 1)}
+                    disabled={viewingHoleNum() === 1}
+                    class="min-h-[44px] min-w-[44px] flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed text-gray-600 hover:text-gray-900"
+                  >
+                    ←
+                  </button>
+                  <h1 class="text-xl font-bold text-gray-900">
+                    Hole {viewingHoleNum()}
+                  </h1>
+                  <button
+                    onClick={() => navigateToHole(viewingHoleNum() + 1)}
+                    disabled={viewingHoleNum() >= currentHole()}
+                    class="min-h-[44px] min-w-[44px] flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed text-gray-600 hover:text-gray-900"
+                  >
+                    →
+                  </button>
+                </div>
                 <div class="overflow-x-auto -mx-4 px-4">
                   <div class="flex gap-3 min-w-max pb-2">
                     <For each={getScoreboardPlayers()}>
@@ -427,33 +443,6 @@ export default function Game() {
                     </For>
                   </div>
                 </div>
-              </div>
-            </div>
-
-            {/* Navigation */}
-            <div class="bg-white border-b border-gray-200 p-4">
-              <div class="max-w-2xl mx-auto flex items-center justify-center gap-4">
-                <button
-                  onClick={() => navigateToHole(viewingHoleNum() - 1)}
-                  disabled={viewingHoleNum() === 1}
-                  class="min-h-[44px] min-w-[44px] flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed text-gray-600 hover:text-gray-900"
-                >
-                  ←
-                </button>
-                <button
-                  onClick={() => navigateToHole(currentHole())}
-                  disabled={viewingHoleNum() === currentHole()}
-                  class="min-h-[44px] px-4 py-2 disabled:opacity-40 disabled:cursor-not-allowed bg-gray-200 hover:bg-gray-300 rounded-lg font-medium text-gray-900"
-                >
-                  Current
-                </button>
-                <button
-                  onClick={() => navigateToHole(viewingHoleNum() + 1)}
-                  disabled={viewingHoleNum() >= currentHole()}
-                  class="min-h-[44px] min-w-[44px] flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed text-gray-600 hover:text-gray-900"
-                >
-                  →
-                </button>
               </div>
             </div>
 
