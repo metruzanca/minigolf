@@ -79,7 +79,7 @@ export default function Game() {
     return getGame(params.code);
   });
   const [viewingHole, setViewingHole] = createSignal<number>(1);
-  const [previousHole, setPreviousHole] = createSignal<number>(1);
+  const [previousHole, setPreviousHole] = createSignal<number | null>(null);
   const [showAddPlayerModal, setShowAddPlayerModal] = createSignal(false);
   const [newPlayerName, setNewPlayerName] = createSignal("");
   const [newPlayerColor, setNewPlayerColor] = createSignal("#FF0000");
@@ -112,11 +112,28 @@ export default function Game() {
       const holeParam = Array.isArray(searchParams.hole)
         ? searchParams.hole[0]
         : searchParams.hole;
-      const holeFromUrl = holeParam ? parseInt(holeParam) : null;
-      const newHole = holeFromUrl || game.currentHole;
+
+      let newHole = game.currentHole;
+      if (holeParam) {
+        const parsed = parseInt(holeParam, 10);
+        // Validate: must be a valid number, positive integer, and within game bounds
+        if (
+          !isNaN(parsed) &&
+          Number.isInteger(parsed) &&
+          parsed > 0 &&
+          parsed <= game.numHoles
+        ) {
+          newHole = parsed;
+        }
+      }
+
       const currentHole = viewingHole();
       if (currentHole !== newHole && currentHole !== 0) {
         setPreviousHole(currentHole);
+      }
+      // Initialize previousHole to match viewingHole on first load
+      if (previousHole() === null) {
+        setPreviousHole(newHole);
       }
       setViewingHole(newHole);
     }
@@ -519,18 +536,28 @@ export default function Game() {
               <Presence exitBeforeEnter>
                 <Show when={viewingHoleNum()} keyed>
                   {(holeNum) => {
-                    const isGoingForward = holeNum > previousHole();
+                    const prevHole = previousHole();
+                    // If previousHole is null, default to no direction (first load)
+                    const isGoingForward =
+                      prevHole !== null ? holeNum > prevHole : false;
                     const slideDistance = 50;
+                    // When going forward (next hole): old content exits left, new content comes from right
+                    // When going backward (previous hole): old content exits right, new content comes from left
+                    const initialX = isGoingForward
+                      ? slideDistance
+                      : -slideDistance;
+                    // Exit is opposite of initial
+                    const exitX = -initialX;
                     return (
                       <Motion.div
                         initial={{
                           opacity: 0,
-                          x: isGoingForward ? slideDistance : -slideDistance,
+                          x: initialX,
                         }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{
                           opacity: 0,
-                          x: isGoingForward ? -slideDistance : slideDistance,
+                          x: exitX,
                         }}
                         transition={{ duration: 0.3, easing: "ease-in-out" }}
                         class="space-y-4"
