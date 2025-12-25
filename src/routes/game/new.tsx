@@ -1,4 +1,4 @@
-import { createSignal, For, Show } from "solid-js";
+import { createSignal, For, Show, createEffect } from "solid-js";
 import { useNavigate, useAction } from "@solidjs/router";
 import { createGame, addPlayer } from "~/api";
 import type { RouteDefinition } from "@solidjs/router";
@@ -20,6 +20,21 @@ export default function NewGame() {
   const [newPlayerName, setNewPlayerName] = createSignal("");
   const [newPlayerColor, setNewPlayerColor] = createSignal("#FF0000");
   const [isCreating, setIsCreating] = createSignal(false);
+
+  // Focus the input when modal opens
+  createEffect(() => {
+    if (showAddPlayerModal()) {
+      // Use setTimeout to ensure the DOM is updated
+      setTimeout(() => {
+        const input = document.getElementById(
+          "newPlayerName"
+        ) as HTMLInputElement;
+        if (input) {
+          input.focus();
+        }
+      }, 0);
+    }
+  });
 
   const handleAddPlayer = () => {
     const name = newPlayerName().trim();
@@ -174,6 +189,7 @@ export default function NewGame() {
                   setNewPlayerName("");
                   setNewPlayerColor("#FF0000");
                 }}
+                tabindex="-1"
                 class="flex-1 min-h-[44px] bg-gray-200 hover:bg-gray-300 text-gray-900 font-semibold py-2 px-4 rounded-lg transition-colors"
               >
                 Cancel
