@@ -1,11 +1,20 @@
 import { drizzle } from "drizzle-orm/libsql";
 import { createClient } from "@libsql/client";
 import { fileURLToPath } from "url";
-import { dirname, join } from "path";
+import { dirname, join, resolve } from "path";
+import { mkdir } from "fs/promises";
+import { existsSync } from "fs";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const dbPath = join(__dirname, "../../drizzle/db.sqlite");
+// Use environment variable for database path, or resolve relative to project root
+const dbPath = process.env.DATABASE_PATH
+  ? resolve(process.env.DATABASE_PATH)
+  : resolve(process.cwd(), "drizzle", "db.sqlite");
+const dbDir = dirname(dbPath);
+
+// Ensure the directory exists before creating the client
+if (!existsSync(dbDir)) {
+  await mkdir(dbDir, { recursive: true });
+}
 
 const client = createClient({
   url: `file:${dbPath}`,
