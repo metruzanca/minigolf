@@ -6,7 +6,7 @@
     "build": "vinxi build",
     "prestart": "drizzle-kit push",
     "start": "vinxi start",
-    "dev:fresh": "rm drizzle/db.sqlite && bunx drizzle-kit push && vinxi dev"
+    "dev:fresh": "rm drizzle/db.sqlite && drizzle-kit push && vinxi dev"
   },
   "devDependencies": {
     "@types/node": "^24.7.0",

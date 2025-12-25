@@ -70,13 +70,28 @@ export default function Game() {
   // Force refresh signal to trigger query revalidation
   const [refreshKey, setRefreshKey] = createSignal(0);
 
-  const gameData = createAsync(() => {
+  const gameData = createAsync(async () => {
     if (!params.code) {
       throw new Error("Game code is required");
     }
     // Include refreshKey to force re-fetch when scores change
     refreshKey();
-    return getGame(params.code);
+    try {
+      return await getGame(params.code);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      if (
+        errorMessage.includes("Game not found") ||
+        errorMessage.includes("not found")
+      ) {
+        navigate(`/?error=${encodeURIComponent("Game not found")}`, {
+          replace: true,
+        });
+        return null;
+      }
+      throw error;
+    }
   });
   const [viewingHole, setViewingHole] = createSignal<number>(1);
   type AnimationState = {

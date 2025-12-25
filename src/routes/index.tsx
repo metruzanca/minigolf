@@ -1,12 +1,13 @@
-import { A, useNavigate } from "@solidjs/router";
+import { A, useNavigate, useSearchParams } from "@solidjs/router";
 import type { RouteDefinition } from "@solidjs/router";
-import { createSignal, For, onMount } from "solid-js";
+import { createSignal, For, onMount, Show } from "solid-js";
 import { getStoredGameCodes, removeGameCode } from "~/utils/gameStorage";
 
 export const route = {} satisfies RouteDefinition;
 
 export default function Home() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [storedGameCodes, setStoredGameCodes] = createSignal<
     Array<{ code: string; createdAt: string }>
   >([]);
@@ -46,6 +47,19 @@ export default function Home() {
     }
   };
 
+  // Get error message from query params
+  const errorMessage = () => {
+    const error = Array.isArray(searchParams.error)
+      ? searchParams.error[0]
+      : searchParams.error;
+    return error ? decodeURIComponent(error) : null;
+  };
+
+  // Clear error from URL after displaying
+  const clearError = () => {
+    setSearchParams({ error: undefined }, { replace: true });
+  };
+
   return (
     <main class="min-h-screen flex flex-col items-center justify-center p-4 bg-gray-50">
       <div class="max-w-md w-full space-y-8">
@@ -55,6 +69,42 @@ export default function Home() {
           </h1>
           <p class="text-gray-600">Track your minigolf scores</p>
         </div>
+
+        {/* Error Message */}
+        <Show when={errorMessage()}>
+          {(error) => (
+            <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div class="flex items-start justify-between">
+                <div class="flex-1">
+                  <h3 class="text-sm font-semibold text-red-800 mb-1">
+                    Error
+                  </h3>
+                  <p class="text-sm text-red-700">{error()}</p>
+                </div>
+                <button
+                  onClick={clearError}
+                  class="ml-4 text-red-600 hover:text-red-800 min-h-[44px] min-w-[44px] flex items-center justify-center"
+                  aria-label="Dismiss error"
+                >
+                  <svg
+                    class="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          )}
+        </Show>
+
         <button
           onClick={() => navigate("/game/new")}
           class="w-full min-h-[44px] bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
