@@ -4,6 +4,7 @@ import { useSession } from "vinxi/http";
 import { eq, and } from "drizzle-orm";
 import { db } from "./db";
 import { Users, Games, Players, Scores } from "../../drizzle/schema";
+import { gameEventEmitter } from "./eventEmitter";
 
 // Get MAX_SHOTS from environment variable, default to 10
 const MAX_SHOTS = parseInt(process.env.MAX_SHOTS || "10", 10) || 10;
@@ -37,7 +38,11 @@ async function register(username: string, password: string) {
     .where(eq(Users.username, username))
     .get();
   if (existingUser) throw new Error("User already exists");
-  return (await db.insert(Users).values({ username, password }).returning().get());
+  return await db
+    .insert(Users)
+    .values({ username, password })
+    .returning()
+    .get();
 }
 
 function getSession() {
@@ -80,7 +85,11 @@ export async function getUser() {
   if (userId === undefined) throw redirect("/login");
 
   try {
-    const user = await db.select().from(Users).where(eq(Users.id, userId)).get();
+    const user = await db
+      .select()
+      .from(Users)
+      .where(eq(Users.id, userId))
+      .get();
     if (!user) throw redirect("/login");
     return { id: user.id, username: user.username };
   } catch {
@@ -190,11 +199,7 @@ export async function addPlayer(
   }
 
   // Verify game exists
-  const game = await db
-    .select()
-    .from(Games)
-    .where(eq(Games.id, gameId))
-    .get();
+  const game = await db.select().from(Games).where(eq(Games.id, gameId)).get();
   if (!game) {
     throw new Error("Game not found");
   }
@@ -209,6 +214,19 @@ export async function addPlayer(
     })
     .returning()
     .get();
+
+  // Emit event for real-time updates
+  try {
+    const gameData = await getGame(game.shortCode);
+    gameEventEmitter.broadcast(game.shortCode, "game:update", {
+      type: "playerAdded",
+      gameCode: game.shortCode,
+      data: gameData,
+    });
+  } catch (error) {
+    // Log error but don't fail the request
+    console.error("Failed to emit player added event:", error);
+  }
 
   return player;
 }
@@ -234,11 +252,7 @@ export async function addScore(
   }
 
   // Verify game exists
-  const game = await db
-    .select()
-    .from(Games)
-    .where(eq(Games.id, gameId))
-    .get();
+  const game = await db.select().from(Games).where(eq(Games.id, gameId)).get();
   if (!game) {
     throw new Error("Game not found");
   }
@@ -271,9 +285,10 @@ export async function addScore(
     )
     .get();
 
+  let scoreResult;
   if (existing) {
     // Update existing score
-    return await db
+    scoreResult = await db
       .update(Scores)
       .set({ score })
       .where(eq(Scores.id, existing.id))
@@ -281,7 +296,7 @@ export async function addScore(
       .get();
   } else {
     // Insert new score
-    return await db
+    scoreResult = await db
       .insert(Scores)
       .values({
         playerId,
@@ -293,6 +308,21 @@ export async function addScore(
       .returning()
       .get();
   }
+
+  // Emit event for real-time updates
+  try {
+    const gameData = await getGame(game.shortCode);
+    gameEventEmitter.broadcast(game.shortCode, "game:update", {
+      type: "score",
+      gameCode: game.shortCode,
+      data: gameData,
+    });
+  } catch (error) {
+    // Log error but don't fail the request
+    console.error("Failed to emit score update event:", error);
+  }
+
+  return scoreResult;
 }
 
 export async function updateCurrentHole(gameId: number, holeNumber: number) {
@@ -305,11 +335,7 @@ export async function updateCurrentHole(gameId: number, holeNumber: number) {
   }
 
   // Verify game exists
-  const game = db
-    .select()
-    .from(Games)
-    .where(eq(Games.id, gameId))
-    .get();
+  const game = await db.select().from(Games).where(eq(Games.id, gameId)).get();
   if (!game) {
     throw new Error("Game not found");
   }
@@ -350,27 +376,38 @@ export async function addHole(gameId: number) {
   }
 
   // Verify game exists
-  const game = await db
-    .select()
-    .from(Games)
-    .where(eq(Games.id, gameId))
-    .get();
-  
+  const game = await db.select().from(Games).where(eq(Games.id, gameId)).get();
+
   if (!game) {
     throw new Error("Game not found");
   }
 
   const newHoleNumber = game.numHoles + 1;
-  
-  return await db
+
+  const updatedGame = await db
     .update(Games)
-    .set({ 
+    .set({
       numHoles: newHoleNumber,
-      currentHole: newHoleNumber 
+      currentHole: newHoleNumber,
     })
     .where(eq(Games.id, gameId))
     .returning()
     .get();
+
+  // Emit event for real-time updates
+  try {
+    const gameData = await getGame(game.shortCode);
+    gameEventEmitter.broadcast(game.shortCode, "game:update", {
+      type: "hole",
+      gameCode: game.shortCode,
+      data: gameData,
+    });
+  } catch (error) {
+    // Log error but don't fail the request
+    console.error("Failed to emit hole added event:", error);
+  }
+
+  return updatedGame;
 }
 
 export async function updatePlayer(
@@ -404,11 +441,7 @@ export async function updatePlayer(
   }
 
   // Verify game exists
-  const game = await db
-    .select()
-    .from(Games)
-    .where(eq(Games.id, gameId))
-    .get();
+  const game = await db.select().from(Games).where(eq(Games.id, gameId)).get();
   if (!game) {
     throw new Error("Game not found");
   }
@@ -423,7 +456,7 @@ export async function updatePlayer(
     throw new Error("Player not found in this game");
   }
 
-  return await db
+  const updatedPlayer = await db
     .update(Players)
     .set({
       name: trimmedName,
@@ -432,4 +465,19 @@ export async function updatePlayer(
     .where(eq(Players.id, playerId))
     .returning()
     .get();
+
+  // Emit event for real-time updates
+  try {
+    const gameData = await getGame(game.shortCode);
+    gameEventEmitter.broadcast(game.shortCode, "game:update", {
+      type: "player",
+      gameCode: game.shortCode,
+      data: gameData,
+    });
+  } catch (error) {
+    // Log error but don't fail the request
+    console.error("Failed to emit player update event:", error);
+  }
+
+  return updatedPlayer;
 }

@@ -1,11 +1,10 @@
-import { createSignal, createEffect, For, Show } from "solid-js";
+import { createSignal, createEffect, For, Show, createResource } from "solid-js";
 import {
   useParams,
   useSearchParams,
   useNavigate,
   useAction,
 } from "@solidjs/router";
-import { createAsync } from "@solidjs/router";
 import {
   getGame,
   addScore,
@@ -73,29 +72,31 @@ export default function Game() {
   // Force refresh signal to trigger query revalidation
   const [refreshKey, setRefreshKey] = createSignal(0);
 
-  const gameData = createAsync(async () => {
-    if (!params.code) {
-      throw new Error("Game code is required");
-    }
-    // Include refreshKey to force re-fetch when scores change
-    refreshKey();
-    try {
-      return await getGame(params.code);
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      if (
-        errorMessage.includes("Game not found") ||
-        errorMessage.includes("not found")
-      ) {
-        navigate(`/?error=${encodeURIComponent("Game not found")}`, {
-          replace: true,
-        });
-        return null;
+  // Use createResource with refreshKey as source to ensure re-fetch on changes
+  const [gameData] = createResource(
+    () => ({ code: params.code, refresh: refreshKey() }),
+    async ({ code }) => {
+      if (!code) {
+        throw new Error("Game code is required");
       }
-      throw error;
+      try {
+        return await getGame(code);
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        if (
+          errorMessage.includes("Game not found") ||
+          errorMessage.includes("not found")
+        ) {
+          navigate(`/?error=${encodeURIComponent("Game not found")}`, {
+            replace: true,
+          });
+          return null;
+        }
+        throw error;
+      }
     }
-  });
+  );
   const [viewingHole, setViewingHole] = createSignal<number>(1);
   type AnimationState = {
     previousHole: number | null;
@@ -136,6 +137,47 @@ export default function Game() {
     if (game && params.code) {
       addGameCode(params.code, game.createdAt);
     }
+  });
+
+  // SSE connection for real-time updates
+  createEffect(() => {
+    const gameCode = params.code;
+    if (!gameCode || typeof window === "undefined") {
+      return;
+    }
+
+    // Create EventSource connection
+    const eventSource = new EventSource(`/api/game/${gameCode}/stream`);
+
+    // Handle incoming messages
+    eventSource.addEventListener("game:update", (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        // Trigger query revalidation to fetch updated game data
+        setRefreshKey((prev) => prev + 1);
+      } catch (error) {
+        console.error("Failed to parse SSE event data:", error);
+      }
+    });
+
+    // Handle connection open
+    eventSource.addEventListener("connected", () => {
+      console.log("SSE connection established for game:", gameCode);
+    });
+
+    // Handle errors and implement reconnection
+    eventSource.onerror = (error) => {
+      console.error("SSE connection error:", error);
+      // EventSource automatically reconnects, but we can close and cleanup if needed
+      if (eventSource.readyState === EventSource.CLOSED) {
+        eventSource.close();
+      }
+    };
+
+    // Cleanup on unmount or when game code changes
+    return () => {
+      eventSource.close();
+    };
   });
 
   // Initialize viewing hole from URL or current hole
