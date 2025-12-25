@@ -5,6 +5,7 @@ interface ImportMetaEnv {
   DB_MIGRATIONS_URL: string;
   SITE_NAME: string;
   SESSION_SECRET: string;
+  MAX_SHOTS: string;
 }
   
 interface ImportMeta {

@@ -51,22 +51,13 @@ export default function NewGame() {
 
     setIsCreating(true);
     try {
-      console.log("Creating game");
       const game = await createGameAction();
 
-      console.log("Game created:", game);
       // Add all players
       for (const player of players()) {
-        console.log(
-          "Adding player",
-          player.name,
-          "with color",
-          player.ballColor
-        );
         await addPlayerAction(game.id, player.name, player.ballColor);
       }
 
-      console.log("Navigating to game", game.shortCode);
       // Add game code to localStorage with timestamp
       addGameCode(game.shortCode, game.createdAt);
       navigate(`/game/${game.shortCode}`);

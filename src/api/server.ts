@@ -5,6 +5,9 @@ import { eq, and } from "drizzle-orm";
 import { db } from "./db";
 import { Users, Games, Players, Scores } from "../../drizzle/schema";
 
+// Get MAX_SHOTS from environment variable, default to 10
+const MAX_SHOTS = parseInt(process.env.MAX_SHOTS || "10", 10) || 10;
+
 function validateUsername(username: unknown) {
   if (typeof username !== "string" || username.length < 3) {
     return `Usernames must be at least 3 characters long`;
@@ -167,11 +170,40 @@ export async function addPlayer(
   name: string,
   ballColor: string
 ) {
+  // Validate gameId
+  if (!Number.isInteger(gameId) || gameId <= 0) {
+    throw new Error("Invalid game ID");
+  }
+
+  // Validate name
+  if (typeof name !== "string" || !name.trim()) {
+    throw new Error("Player name is required");
+  }
+  const trimmedName = name.trim();
+  if (trimmedName.length < 1 || trimmedName.length > 50) {
+    throw new Error("Player name must be between 1 and 50 characters");
+  }
+
+  // Validate ballColor (basic hex color validation)
+  if (typeof ballColor !== "string" || !/^#[0-9A-Fa-f]{6}$/.test(ballColor)) {
+    throw new Error("Invalid ball color format");
+  }
+
+  // Verify game exists
+  const game = db
+    .select()
+    .from(Games)
+    .where(eq(Games.id, gameId))
+    .get();
+  if (!game) {
+    throw new Error("Game not found");
+  }
+
   const player = db
     .insert(Players)
     .values({
       gameId,
-      name,
+      name: trimmedName,
       ballColor,
       createdAt: new Date(),
     })
@@ -187,6 +219,45 @@ export async function addScore(
   holeNumber: number,
   score: number
 ) {
+  // Validate inputs
+  if (!Number.isInteger(gameId) || gameId <= 0) {
+    throw new Error("Invalid game ID");
+  }
+  if (!Number.isInteger(playerId) || playerId <= 0) {
+    throw new Error("Invalid player ID");
+  }
+  if (!Number.isInteger(holeNumber) || holeNumber <= 0) {
+    throw new Error("Invalid hole number");
+  }
+  if (!Number.isInteger(score) || score < 1 || score > MAX_SHOTS) {
+    throw new Error(`Score must be between 1 and ${MAX_SHOTS}`);
+  }
+
+  // Verify game exists
+  const game = db
+    .select()
+    .from(Games)
+    .where(eq(Games.id, gameId))
+    .get();
+  if (!game) {
+    throw new Error("Game not found");
+  }
+
+  // Validate holeNumber is within game bounds
+  if (holeNumber > game.numHoles) {
+    throw new Error(`Hole number ${holeNumber} does not exist in this game`);
+  }
+
+  // Verify player belongs to this game
+  const player = db
+    .select()
+    .from(Players)
+    .where(and(eq(Players.id, playerId), eq(Players.gameId, gameId)))
+    .get();
+  if (!player) {
+    throw new Error("Player not found in this game");
+  }
+
   // Check if score already exists for this player/hole
   const existing = db
     .select()
@@ -225,6 +296,29 @@ export async function addScore(
 }
 
 export async function updateCurrentHole(gameId: number, holeNumber: number) {
+  // Validate inputs
+  if (!Number.isInteger(gameId) || gameId <= 0) {
+    throw new Error("Invalid game ID");
+  }
+  if (!Number.isInteger(holeNumber) || holeNumber <= 0) {
+    throw new Error("Invalid hole number");
+  }
+
+  // Verify game exists
+  const game = db
+    .select()
+    .from(Games)
+    .where(eq(Games.id, gameId))
+    .get();
+  if (!game) {
+    throw new Error("Game not found");
+  }
+
+  // Validate holeNumber is within game bounds
+  if (holeNumber > game.numHoles) {
+    throw new Error(`Hole number ${holeNumber} does not exist in this game`);
+  }
+
   return db
     .update(Games)
     .set({ currentHole: holeNumber })
@@ -250,6 +344,12 @@ export async function getAverageScoreForHole(
 }
 
 export async function addHole(gameId: number) {
+  // Validate gameId
+  if (!Number.isInteger(gameId) || gameId <= 0) {
+    throw new Error("Invalid game ID");
+  }
+
+  // Verify game exists
   const game = db
     .select()
     .from(Games)

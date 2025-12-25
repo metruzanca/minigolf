@@ -18,6 +18,13 @@ import type { RouteDefinition } from "@solidjs/router";
 import { addGameCode } from "~/utils/gameStorage";
 import { HomeIcon } from "~/components/icons";
 
+// Maximum number of shots allowed (should match server-side MAX_SHOTS env var, default 10)
+const MAX_SHOTS = 10;
+
+// Generate array of valid score values [1, 2, 3, ..., MAX_SHOTS]
+const getScoreOptions = () =>
+  Array.from({ length: MAX_SHOTS }, (_, i) => i + 1);
+
 export const route = {
   load({ params }) {
     if (params.code) {
@@ -144,13 +151,20 @@ export default function Game() {
     if (!game) return;
 
     const hole = viewingHole();
-    await addScoreAction(playerId, game.id, hole, score);
+    try {
+      await addScoreAction(playerId, game.id, hole, score);
 
-    // Force query refresh by updating the refresh key
-    setRefreshKey((prev) => prev + 1);
+      // Force query refresh by updating the refresh key
+      setRefreshKey((prev) => prev + 1);
 
-    if (closeModal) {
-      setEditingScore(null);
+      if (closeModal) {
+        setEditingScore(null);
+      }
+    } catch (error) {
+      console.error("Failed to add score:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to add score";
+      alert(errorMessage);
     }
   };
 
@@ -158,17 +172,24 @@ export default function Game() {
     const game = gameData();
     if (!game) return;
 
-    await addHoleAction(game.id);
-    setRefreshKey((prev) => prev + 1);
+    try {
+      await addHoleAction(game.id);
+      setRefreshKey((prev) => prev + 1);
 
-    // Navigate to the new hole after a brief delay to allow data to refresh
-    setTimeout(() => {
-      const updatedGame = gameData();
-      if (updatedGame) {
-        setViewingHole(updatedGame.currentHole);
-        setSearchParams({ hole: updatedGame.currentHole.toString() });
-      }
-    }, 200);
+      // Navigate to the new hole after a brief delay to allow data to refresh
+      setTimeout(() => {
+        const updatedGame = gameData();
+        if (updatedGame) {
+          setViewingHole(updatedGame.currentHole);
+          setSearchParams({ hole: updatedGame.currentHole.toString() });
+        }
+      }, 200);
+    } catch (error) {
+      console.error("Failed to add hole:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to add hole";
+      alert(errorMessage);
+    }
   };
 
   const handleAddPlayer = async () => {
@@ -499,13 +520,13 @@ export default function Game() {
                         {player.name}
                       </h3>
                     </div>
-                    <div class="grid grid-cols-3 gap-2">
-                      {[1, 2, 3, 4, 5, 6].map((score) => {
+                    <div class="grid grid-cols-5 gap-1.5">
+                      {getScoreOptions().map((score) => {
                         const shouldDim = maxScore() > 0 && score < maxScore();
                         return (
                           <button
                             onClick={() => handleScore(player.id, score)}
-                            class={`min-h-[44px] py-2 px-4 rounded-lg font-semibold transition-all ${
+                            class={`min-h-[36px] py-1.5 px-2 rounded-md text-sm font-semibold transition-all ${
                               shouldDim
                                 ? "opacity-40 bg-gray-100 text-gray-600 hover:opacity-60"
                                 : "bg-blue-600 hover:bg-blue-700 text-white"
@@ -687,13 +708,13 @@ export default function Game() {
                       <label class="block text-sm font-medium text-gray-700 mb-3">
                         Select New Score
                       </label>
-                      <div class="grid grid-cols-3 gap-2">
-                        {[1, 2, 3, 4, 5, 6].map((score) => (
+                      <div class="grid grid-cols-5 gap-1.5">
+                        {getScoreOptions().map((score) => (
                           <button
                             onClick={() =>
                               handleScore(editing().playerId, score, true)
                             }
-                            class="min-h-[44px] py-2 px-4 rounded-lg font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+                            class="min-h-[36px] py-1.5 px-2 rounded-md text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors"
                           >
                             {score}
                           </button>
