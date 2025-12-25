@@ -54,10 +54,15 @@ export default function Game() {
   const updateCurrentHoleAction = useAction(updateCurrentHole);
   const addPlayerAction = useAction(addPlayer);
 
+  // Force refresh signal to trigger query revalidation
+  const [refreshKey, setRefreshKey] = createSignal(0);
+
   const gameData = createAsync(() => {
     if (!params.code) {
       throw new Error("Game code is required");
     }
+    // Include refreshKey to force re-fetch when scores change
+    refreshKey();
     return getGame(params.code);
   });
   const [viewingHole, setViewingHole] = createSignal<number>(1);
@@ -68,6 +73,13 @@ export default function Game() {
   const [maxScore, setMaxScore] = createSignal<number>(0);
   const [completedPlayersCollapsed, setCompletedPlayersCollapsed] =
     createSignal(true);
+  const [editingScore, setEditingScore] = createSignal<{
+    playerId: number;
+    playerName: string;
+    playerColor: string;
+    currentScore: number;
+    holeNumber: number;
+  } | null>(null);
 
   // Initialize viewing hole from URL or current hole
   createEffect(() => {
@@ -99,12 +111,23 @@ export default function Game() {
 
   const [isAutoAdvancing, setIsAutoAdvancing] = createSignal(false);
 
-  const handleScore = async (playerId: number, score: number) => {
+  const handleScore = async (
+    playerId: number,
+    score: number,
+    closeModal = false
+  ) => {
     const game = gameData();
     if (!game) return;
 
     const hole = viewingHole();
     await addScoreAction(playerId, game.id, hole, score);
+
+    // Force query refresh by updating the refresh key
+    setRefreshKey((prev) => prev + 1);
+
+    if (closeModal) {
+      setEditingScore(null);
+    }
 
     // Actions automatically revalidate queries, so gameData will update
     // Check for auto-advance after a brief delay to allow data to refresh
@@ -385,7 +408,18 @@ export default function Game() {
                     <div class="p-4 pt-0 space-y-3">
                       <For each={getPlayersWithScores().completed}>
                         {({ player, score }) => (
-                          <div class="flex items-center justify-between p-3 bg-gray-50 rounded">
+                          <button
+                            onClick={() =>
+                              setEditingScore({
+                                playerId: player.id,
+                                playerName: player.name,
+                                playerColor: player.ballColor,
+                                currentScore: score.score,
+                                holeNumber: viewingHole(),
+                              })
+                            }
+                            class="w-full flex items-center justify-between p-3 bg-gray-50 rounded hover:bg-gray-100 transition-colors"
+                          >
                             <div class="flex items-center gap-3">
                               <div
                                 class="w-6 h-6 rounded-full border border-gray-300"
@@ -398,7 +432,7 @@ export default function Game() {
                             <span class="font-semibold text-gray-900">
                               {score.score}
                             </span>
-                          </div>
+                          </button>
                         )}
                       </For>
                     </div>
@@ -476,6 +510,56 @@ export default function Game() {
                   </div>
                 </div>
               </div>
+            </Show>
+
+            {/* Edit Score Modal */}
+            <Show when={editingScore()}>
+              {(editing) => (
+                <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                  <div class="bg-white rounded-lg p-6 max-w-md w-full space-y-4">
+                    <h3 class="text-xl font-bold text-gray-900">
+                      Edit Score - {editing().playerName}
+                    </h3>
+                    <div class="flex items-center gap-3 mb-4">
+                      <div
+                        class="w-8 h-8 rounded-full border-2 border-gray-300"
+                        style={{ "background-color": editing().playerColor }}
+                      ></div>
+                      <div>
+                        <p class="text-sm text-gray-600">Current Score</p>
+                        <p class="text-lg font-semibold text-gray-900">
+                          {editing().currentScore}
+                        </p>
+                      </div>
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-3">
+                        Select New Score
+                      </label>
+                      <div class="grid grid-cols-3 gap-2">
+                        {[1, 2, 3, 4, 5, 6].map((score) => (
+                          <button
+                            onClick={() =>
+                              handleScore(editing().playerId, score, true)
+                            }
+                            class="min-h-[44px] py-2 px-4 rounded-lg font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+                          >
+                            {score}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div class="flex gap-3">
+                      <button
+                        onClick={() => setEditingScore(null)}
+                        class="flex-1 min-h-[44px] bg-gray-200 hover:bg-gray-300 text-gray-900 font-semibold py-2 px-4 rounded-lg transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </Show>
           </>
         )}
