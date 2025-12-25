@@ -5,7 +5,7 @@
     "dev": "vinxi dev",
     "build": "vinxi build",
     "start": "vinxi start",
-    "dev:fresh": "rm drizzle/db.sqlite && vinxi dev"
+    "dev:fresh": "rm drizzle/db.sqlite && npx drizzle-kit push && vinxi dev"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.10",
