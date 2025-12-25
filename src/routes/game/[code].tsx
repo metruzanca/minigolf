@@ -16,6 +16,7 @@ import {
 } from "~/api";
 import type { RouteDefinition } from "@solidjs/router";
 import { addGameCode } from "~/utils/gameStorage";
+import { HomeIcon } from "~/components/icons";
 
 export const route = {
   load({ params }) {
@@ -355,8 +356,12 @@ export default function Game() {
             {/* Header with game code */}
             <div class="bg-blue-600 text-white p-3 sticky top-0 z-20">
               <div class="max-w-2xl mx-auto flex items-center justify-between">
-                <a href="/" class="text-white hover:text-blue-200 font-medium">
-                  ← Home
+                <a
+                  href="/"
+                  class="text-white hover:text-blue-200 font-medium min-h-[44px] min-w-[44px] flex items-center justify-center"
+                  aria-label="Home"
+                >
+                  <HomeIcon />
                 </a>
                 <div class="text-sm">
                   Game: <span class="font-mono font-bold">{g().shortCode}</span>
