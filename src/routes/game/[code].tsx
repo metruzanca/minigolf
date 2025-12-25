@@ -384,17 +384,13 @@ export default function Game() {
     );
   };
 
-  // Calculate total score for a player
+  // Calculate total score for a player (for scoreboard - always shows all scores)
   const getTotalScore = (playerId: number) => {
     const g = game();
     if (!g) return 0;
-    const maxHoleToInclude = allPlayersCompletedCurrentHole()
-      ? currentHole()
-      : currentHole() - 1;
+    // Scoreboard always shows all recorded scores, regardless of viewing hole
     return g.scores
-      .filter(
-        (s) => s.playerId === playerId && s.holeNumber <= maxHoleToInclude
-      )
+      .filter((s) => s.playerId === playerId)
       .reduce((sum, s) => sum + s.score, 0);
   };
 
@@ -402,16 +398,13 @@ export default function Game() {
   const getScoreboardPlayers = () => {
     const g = game();
     if (!g) return [];
-    const maxHoleToInclude = allPlayersCompletedCurrentHole()
-      ? currentHole()
-      : currentHole() - 1;
 
     return g.players
       .map((player) => ({
         player,
         totalScore: getTotalScore(player.id),
         holesPlayed: g.scores.filter(
-          (s) => s.playerId === player.id && s.holeNumber <= maxHoleToInclude
+          (s) => s.playerId === player.id
         ).length,
       }))
       .sort((a, b) => {
