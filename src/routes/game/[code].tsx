@@ -121,6 +121,17 @@ export default function Game() {
     }
   });
 
+  // Auto-open completed players section when viewing previous holes
+  createEffect(() => {
+    const game = gameData();
+    if (!game) return;
+    const viewing = viewingHole();
+    const current = currentHole();
+    if (viewing < current) {
+      setCompletedPlayersCollapsed(false);
+    }
+  });
+
   const handleScore = async (
     playerId: number,
     score: number,
@@ -533,9 +544,10 @@ export default function Game() {
                 </div>
               </Show>
 
-              {/* Add Hole / Summary Card - Show when all players have scores */}
+              {/* Add Hole / Summary Card - Show when all players have scores and viewing current hole */}
               <Show
                 when={
+                  viewingHoleNum() === currentHole() &&
                   getPlayersWithScores().active.length === 0 &&
                   getPlayersWithScores().completed.length ===
                     g().players.length &&
