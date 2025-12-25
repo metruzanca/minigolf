@@ -4,7 +4,8 @@
   "scripts": {
     "dev": "vinxi dev",
     "build": "vinxi build",
-    "start": "vinxi start"
+    "start": "vinxi start",
+    "dev:fresh": "rm drizzle/db.sqlite && vinxi dev"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.10",
