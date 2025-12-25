@@ -18,12 +18,14 @@ export default function Home() {
     removeGameCode(code);
     setStoredGameCodes(getStoredGameCodes());
   };
-  
+
   return (
     <main class="min-h-screen flex flex-col items-center justify-center p-4 bg-gray-50">
       <div class="max-w-md w-full space-y-8">
         <div class="text-center">
-          <h1 class="text-4xl font-bold text-gray-900 mb-2">Minigolf Tracker</h1>
+          <h1 class="text-4xl font-bold text-gray-900 mb-2">
+            Minigolf Tracker
+          </h1>
           <p class="text-gray-600">Track your minigolf scores</p>
         </div>
         <button
@@ -62,6 +64,17 @@ export default function Home() {
             </div>
           </div>
         )}
+      </div>
+      <div class="mt-auto pt-8 pb-4 text-center text-sm text-gray-500">
+        Made with <span class="text-red-400">♥</span> by{" "}
+        <a
+          href="https://github.com/metruzanca"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="text-blue-600 hover:text-blue-700 underline"
+        >
+          metruzanca
+        </a>
       </div>
     </main>
   );
