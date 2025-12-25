@@ -1,13 +1,26 @@
 import { createSignal, createEffect, For, Show } from "solid-js";
-import { useParams, useSearchParams, useNavigate, useRouter } from "@solidjs/router";
+import {
+  useParams,
+  useSearchParams,
+  useNavigate,
+  useAction,
+} from "@solidjs/router";
 import { createAsync } from "@solidjs/router";
-import { getGame, addScore, updateCurrentHole, addPlayer, getAverageScoreForHole } from "~/api";
+import {
+  getGame,
+  addScore,
+  updateCurrentHole,
+  addPlayer,
+  getAverageScoreForHole,
+} from "~/api";
 import type { RouteDefinition } from "@solidjs/router";
 
 export const route = {
   load({ params }) {
-    getGame(params.code);
-  }
+    if (params.code) {
+      getGame(params.code);
+    }
+  },
 } satisfies RouteDefinition;
 
 type Player = {
@@ -36,22 +49,34 @@ export default function Game() {
   const params = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  const router = useRouter();
-  
-  const gameData = createAsync(() => getGame(params.code));
+
+  const addScoreAction = useAction(addScore);
+  const updateCurrentHoleAction = useAction(updateCurrentHole);
+  const addPlayerAction = useAction(addPlayer);
+
+  const gameData = createAsync(() => {
+    if (!params.code) {
+      throw new Error("Game code is required");
+    }
+    return getGame(params.code);
+  });
   const [viewingHole, setViewingHole] = createSignal<number>(1);
   const [showAddPlayerModal, setShowAddPlayerModal] = createSignal(false);
   const [newPlayerName, setNewPlayerName] = createSignal("");
   const [newPlayerColor, setNewPlayerColor] = createSignal("#FF0000");
   const [isAddingPlayer, setIsAddingPlayer] = createSignal(false);
   const [maxScore, setMaxScore] = createSignal<number>(0);
-  const [completedPlayersCollapsed, setCompletedPlayersCollapsed] = createSignal(true);
+  const [completedPlayersCollapsed, setCompletedPlayersCollapsed] =
+    createSignal(true);
 
   // Initialize viewing hole from URL or current hole
   createEffect(() => {
     const game = gameData();
     if (game) {
-      const holeFromUrl = searchParams.hole ? parseInt(searchParams.hole) : null;
+      const holeParam = Array.isArray(searchParams.hole)
+        ? searchParams.hole[0]
+        : searchParams.hole;
+      const holeFromUrl = holeParam ? parseInt(holeParam) : null;
       setViewingHole(holeFromUrl || game.currentHole);
     }
   });
@@ -60,10 +85,12 @@ export default function Game() {
   createEffect(() => {
     const game = gameData();
     if (!game) return;
-    
-    const currentHoleScores = game.scores.filter(s => s.holeNumber === viewingHole());
+
+    const currentHoleScores = game.scores.filter(
+      (s) => s.holeNumber === viewingHole()
+    );
     if (currentHoleScores.length > 0) {
-      const max = Math.max(...currentHoleScores.map(s => s.score));
+      const max = Math.max(...currentHoleScores.map((s) => s.score));
       setMaxScore(max);
     } else {
       setMaxScore(0);
@@ -75,32 +102,31 @@ export default function Game() {
   const handleScore = async (playerId: number, score: number) => {
     const game = gameData();
     if (!game) return;
-    
+
     const hole = viewingHole();
-    await addScore(playerId, game.id, hole, score);
-    
-    // Refresh game data first
-    router.revalidate();
-    
+    await addScoreAction(playerId, game.id, hole, score);
+
+    // Actions automatically revalidate queries, so gameData will update
     // Check for auto-advance after a brief delay to allow data to refresh
     if (hole === game.currentHole && !isAutoAdvancing()) {
-      setTimeout(async () => {
-        const updatedGame = await getGame(params.code);
+      setTimeout(() => {
+        const updatedGame = gameData();
         if (!updatedGame) return;
-        
+
         const players = updatedGame.players;
-        const scores = updatedGame.scores.filter(s => s.holeNumber === hole);
-        
+        const scores = updatedGame.scores.filter((s) => s.holeNumber === hole);
+
         // Check if all players have scores for this hole
         if (scores.length === players.length && hole < updatedGame.numHoles) {
           setIsAutoAdvancing(true);
           // Auto-advance to next hole
           const nextHole = hole + 1;
-          await updateCurrentHole(updatedGame.id, nextHole);
-          router.revalidate();
-          setViewingHole(nextHole);
-          setSearchParams({ hole: nextHole.toString() });
-          setIsAutoAdvancing(false);
+          updateCurrentHoleAction(updatedGame.id, nextHole).then(() => {
+            // Action will automatically revalidate, so gameData will update
+            setViewingHole(nextHole);
+            setSearchParams({ hole: nextHole.toString() });
+            setIsAutoAdvancing(false);
+          });
         }
       }, 200);
     }
@@ -109,24 +135,27 @@ export default function Game() {
   const handleAddPlayer = async () => {
     const game = gameData();
     if (!game || !newPlayerName().trim()) return;
-    
+
     setIsAddingPlayer(true);
     try {
-      const player = await addPlayer(game.id, newPlayerName().trim(), newPlayerColor());
-      
+      const player = await addPlayerAction(
+        game.id,
+        newPlayerName().trim(),
+        newPlayerColor()
+      );
+
       // Calculate average scores for all completed holes
       for (let hole = 1; hole < game.currentHole; hole++) {
         const avgScore = await getAverageScoreForHole(game.id, hole);
         if (avgScore > 0) {
-          await addScore(player.id, game.id, hole, avgScore);
+          await addScoreAction(player.id, game.id, hole, avgScore);
         }
       }
-      
+
       setShowAddPlayerModal(false);
       setNewPlayerName("");
       setNewPlayerColor("#FF0000");
-      // Refresh game data
-      router.revalidate();
+      // Actions automatically revalidate queries, so gameData will update
     } catch (error) {
       console.error("Failed to add player:", error);
       alert("Failed to add player. Please try again.");
@@ -148,19 +177,21 @@ export default function Game() {
   const getPlayersWithScores = () => {
     const g = game();
     if (!g) return { active: [], completed: [] };
-    
+
     const active: Array<{ player: Player; score?: Score }> = [];
     const completed: Array<{ player: Player; score: Score }> = [];
-    
-    g.players.forEach(player => {
-      const score = g.scores.find(s => s.playerId === player.id && s.holeNumber === viewingHoleNum());
+
+    g.players.forEach((player) => {
+      const score = g.scores.find(
+        (s) => s.playerId === player.id && s.holeNumber === viewingHoleNum()
+      );
       if (score) {
         completed.push({ player, score });
       } else {
         active.push({ player });
       }
     });
-    
+
     return { active, completed };
   };
 
@@ -169,7 +200,7 @@ export default function Game() {
     const g = game();
     if (!g) return 0;
     return g.scores
-      .filter(s => s.playerId === playerId && s.holeNumber < currentHole())
+      .filter((s) => s.playerId === playerId && s.holeNumber < currentHole())
       .reduce((sum, s) => sum + s.score, 0);
   };
 
@@ -177,12 +208,14 @@ export default function Game() {
   const getScoreboardPlayers = () => {
     const g = game();
     if (!g) return [];
-    
+
     return g.players
-      .map(player => ({
+      .map((player) => ({
         player,
         totalScore: getTotalScore(player.id),
-        holesPlayed: g.scores.filter(s => s.playerId === player.id && s.holeNumber < currentHole()).length,
+        holesPlayed: g.scores.filter(
+          (s) => s.playerId === player.id && s.holeNumber < currentHole()
+        ).length,
       }))
       .sort((a, b) => {
         if (a.totalScore !== b.totalScore) {
@@ -195,13 +228,17 @@ export default function Game() {
 
   return (
     <main class="min-h-screen bg-gray-50 pb-20">
-      <Show 
-        when={game()} 
+      <Show
+        when={game()}
         fallback={
           <div class="min-h-screen flex items-center justify-center p-4">
             <div class="text-center">
-              <h1 class="text-2xl font-bold text-gray-900 mb-4">Game Not Found</h1>
-              <p class="text-gray-600 mb-6">The game you're looking for doesn't exist.</p>
+              <h1 class="text-2xl font-bold text-gray-900 mb-4">
+                Game Not Found
+              </h1>
+              <p class="text-gray-600 mb-6">
+                The game you're looking for doesn't exist.
+              </p>
               <a
                 href="/"
                 class="inline-block min-h-[44px] bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
@@ -226,29 +263,33 @@ export default function Game() {
                 <div class="w-16"></div>
               </div>
             </div>
-            
+
             {/* Scoreboard */}
             <div class="bg-white border-b border-gray-200 p-4 sticky top-[60px] z-10">
               <div class="max-w-2xl mx-auto">
                 <h1 class="text-xl font-bold text-gray-900 mb-3">Scoreboard</h1>
-                <div class="space-y-2">
-                  <For each={getScoreboardPlayers()}>
-                    {(item, index) => (
-                      <div class="flex items-center justify-between p-2 bg-gray-50 rounded">
-                        <div class="flex items-center gap-3">
-                          <span class="text-sm font-medium text-gray-500 w-6">
-                            {index() + 1}
+                <div class="overflow-x-auto -mx-4 px-4">
+                  <div class="flex gap-3 min-w-max pb-2">
+                    <For each={getScoreboardPlayers()}>
+                      {(item, index) => (
+                        <div
+                          class="flex flex-col items-center justify-center p-4 rounded-lg min-w-[100px] shadow-sm border-2"
+                          style={{
+                            "background-color": item.player.ballColor,
+                            "border-color": item.player.ballColor,
+                            opacity: 0.9,
+                          }}
+                        >
+                          <span class="text-3xl font-bold text-white mb-2 drop-shadow-md">
+                            {item.totalScore}
                           </span>
-                          <div
-                            class="w-4 h-4 rounded-full border border-gray-300"
-                            style={{ "background-color": item.player.ballColor }}
-                          ></div>
-                          <span class="font-medium text-gray-900">{item.player.name}</span>
+                          <span class="text-sm font-medium text-white drop-shadow-md text-center">
+                            {item.player.name}
+                          </span>
                         </div>
-                        <span class="font-semibold text-gray-900">{item.totalScore}</span>
-                      </div>
-                    )}
-                  </For>
+                      )}
+                    </For>
+                  </div>
                 </div>
               </div>
             </div>
@@ -299,7 +340,9 @@ export default function Game() {
                         class="w-8 h-8 rounded-full border-2 border-gray-300"
                         style={{ "background-color": player.ballColor }}
                       ></div>
-                      <h3 class="text-lg font-semibold text-gray-900">{player.name}</h3>
+                      <h3 class="text-lg font-semibold text-gray-900">
+                        {player.name}
+                      </h3>
                     </div>
                     <div class="grid grid-cols-3 gap-2">
                       {[1, 2, 3, 4, 5, 6].map((score) => {
@@ -326,7 +369,9 @@ export default function Game() {
               <Show when={getPlayersWithScores().completed.length > 0}>
                 <div class="bg-white border border-gray-200 rounded-lg">
                   <button
-                    onClick={() => setCompletedPlayersCollapsed(!completedPlayersCollapsed())}
+                    onClick={() =>
+                      setCompletedPlayersCollapsed(!completedPlayersCollapsed())
+                    }
                     class="w-full p-4 flex items-center justify-between"
                   >
                     <span class="font-semibold text-gray-900">
@@ -346,9 +391,13 @@ export default function Game() {
                                 class="w-6 h-6 rounded-full border border-gray-300"
                                 style={{ "background-color": player.ballColor }}
                               ></div>
-                              <span class="font-medium text-gray-900">{player.name}</span>
+                              <span class="font-medium text-gray-900">
+                                {player.name}
+                              </span>
                             </div>
-                            <span class="font-semibold text-gray-900">{score.score}</span>
+                            <span class="font-semibold text-gray-900">
+                              {score.score}
+                            </span>
                           </div>
                         )}
                       </For>
@@ -376,7 +425,10 @@ export default function Game() {
                 <div class="bg-white rounded-lg p-6 max-w-md w-full space-y-4">
                   <h3 class="text-xl font-bold text-gray-900">Add Player</h3>
                   <div>
-                    <label for="newPlayerName" class="block text-sm font-medium text-gray-700 mb-2">
+                    <label
+                      for="newPlayerName"
+                      class="block text-sm font-medium text-gray-700 mb-2"
+                    >
                       Player Name
                     </label>
                     <input
@@ -389,7 +441,10 @@ export default function Game() {
                     />
                   </div>
                   <div>
-                    <label for="newPlayerColor" class="block text-sm font-medium text-gray-700 mb-2">
+                    <label
+                      for="newPlayerColor"
+                      class="block text-sm font-medium text-gray-700 mb-2"
+                    >
                       Ball Color
                     </label>
                     <input
@@ -428,4 +483,3 @@ export default function Game() {
     </main>
   );
 }
-

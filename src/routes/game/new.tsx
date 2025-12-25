@@ -1,5 +1,5 @@
 import { createSignal, For } from "solid-js";
-import { useNavigate } from "@solidjs/router";
+import { useNavigate, useAction } from "@solidjs/router";
 import { createGame, addPlayer } from "~/api";
 import type { RouteDefinition } from "@solidjs/router";
 
@@ -12,6 +12,8 @@ type PlayerInput = {
 
 export default function NewGame() {
   const navigate = useNavigate();
+  const createGameAction = useAction(createGame);
+  const addPlayerAction = useAction(addPlayer);
   const [step, setStep] = createSignal<1 | 2>(1);
   const [numHoles, setNumHoles] = createSignal<number>(18);
   const [players, setPlayers] = createSignal<PlayerInput[]>([]);
@@ -22,7 +24,7 @@ export default function NewGame() {
   const handleAddPlayer = () => {
     const name = currentPlayerName().trim();
     if (!name) return;
-    
+
     setPlayers([...players(), { name, ballColor: currentPlayerColor() }]);
     setCurrentPlayerName("");
     setCurrentPlayerColor("#FF0000");
@@ -30,16 +32,25 @@ export default function NewGame() {
 
   const handleStartGame = async () => {
     if (players().length === 0) return;
-    
+
     setIsCreating(true);
     try {
-      const game = await createGame(numHoles());
-      
+      console.log("Creating game with", numHoles(), "holes");
+      const game = await createGameAction(numHoles());
+
+      console.log("Game created:", game);
       // Add all players
       for (const player of players()) {
-        await addPlayer(game.id, player.name, player.ballColor);
+        console.log(
+          "Adding player",
+          player.name,
+          "with color",
+          player.ballColor
+        );
+        await addPlayerAction(game.id, player.name, player.ballColor);
       }
-      
+
+      console.log("Navigating to game", game.shortCode);
       navigate(`/game/${game.shortCode}`);
     } catch (error) {
       console.error("Failed to create game:", error);
@@ -53,7 +64,7 @@ export default function NewGame() {
       <div class="max-w-md mx-auto space-y-6">
         <div class="flex items-center justify-between mb-6">
           <button
-            onClick={() => step() === 1 ? navigate("/") : setStep(1)}
+            onClick={() => (step() === 1 ? navigate("/") : setStep(1))}
             class="text-blue-600 hover:text-blue-700 font-medium"
           >
             {step() === 1 ? "← Back" : "← Previous"}
@@ -65,7 +76,10 @@ export default function NewGame() {
         {step() === 1 ? (
           <div class="space-y-6">
             <div>
-              <label for="numHoles" class="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                for="numHoles"
+                class="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Number of Holes
               </label>
               <input
@@ -74,7 +88,9 @@ export default function NewGame() {
                 min="1"
                 max="36"
                 value={numHoles()}
-                onInput={(e) => setNumHoles(parseInt(e.currentTarget.value) || 18)}
+                onInput={(e) =>
+                  setNumHoles(parseInt(e.currentTarget.value) || 18)
+                }
                 class="w-full min-h-[44px] px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
@@ -88,7 +104,10 @@ export default function NewGame() {
         ) : (
           <div class="space-y-6">
             <div>
-              <label for="playerName" class="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                for="playerName"
+                class="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Player Name
               </label>
               <input
@@ -101,7 +120,10 @@ export default function NewGame() {
                 class="w-full min-h-[44px] px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mb-3"
               />
               <div class="flex items-center gap-4 mb-3">
-                <label for="ballColor" class="block text-sm font-medium text-gray-700">
+                <label
+                  for="ballColor"
+                  class="block text-sm font-medium text-gray-700"
+                >
                   Ball Color
                 </label>
                 <input
@@ -123,7 +145,9 @@ export default function NewGame() {
 
             {players().length > 0 && (
               <div class="space-y-2">
-                <h2 class="text-lg font-semibold text-gray-900">Players ({players().length})</h2>
+                <h2 class="text-lg font-semibold text-gray-900">
+                  Players ({players().length})
+                </h2>
                 <div class="space-y-2">
                   <For each={players()}>
                     {(player, index) => (
@@ -133,11 +157,15 @@ export default function NewGame() {
                             class="w-6 h-6 rounded-full border-2 border-gray-300"
                             style={{ "background-color": player.ballColor }}
                           ></div>
-                          <span class="font-medium text-gray-900">{player.name}</span>
+                          <span class="font-medium text-gray-900">
+                            {player.name}
+                          </span>
                         </div>
                         <button
                           onClick={() => {
-                            const newPlayers = players().filter((_, i) => i !== index());
+                            const newPlayers = players().filter(
+                              (_, i) => i !== index()
+                            );
                             setPlayers(newPlayers);
                           }}
                           class="text-red-600 hover:text-red-700 text-sm font-medium"
@@ -164,4 +192,3 @@ export default function NewGame() {
     </main>
   );
 }
-
