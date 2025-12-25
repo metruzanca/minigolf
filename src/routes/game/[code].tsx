@@ -1,4 +1,4 @@
-import { createSignal, createEffect, For, Show, onMount } from "solid-js";
+import { createSignal, createEffect, For, Show } from "solid-js";
 import {
   useParams,
   useSearchParams,
@@ -369,18 +369,6 @@ export default function Game() {
       (s) => s.playerId === playerId && s.holeNumber === holeNumber
     );
     return score ? score.score : null;
-  };
-
-  // Get average score for a player
-  const getAverageScore = (playerId: number) => {
-    const g = game();
-    if (!g) return 0;
-    const playerScores = g.scores.filter(
-      (s) => s.playerId === playerId && s.holeNumber < currentHole()
-    );
-    if (playerScores.length === 0) return 0;
-    const total = playerScores.reduce((sum, s) => sum + s.score, 0);
-    return Math.round((total / playerScores.length) * 10) / 10;
   };
 
   // Summary-specific functions that include the viewing hole

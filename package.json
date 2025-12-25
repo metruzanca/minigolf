@@ -10,9 +10,7 @@
   },
   "devDependencies": {
     "@types/node": "^24.7.0",
-    "autoprefixer": "^10.4.23",
     "drizzle-kit": "^0.22.7",
-    "postcss": "^8.5.6",
     "tailwindcss": "^4.1.18"
   },
   "dependencies": {
