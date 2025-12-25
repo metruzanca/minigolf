@@ -79,7 +79,14 @@ export default function Game() {
     return getGame(params.code);
   });
   const [viewingHole, setViewingHole] = createSignal<number>(1);
-  const [previousHole, setPreviousHole] = createSignal<number | null>(null);
+  type AnimationState = {
+    previousHole: number | null;
+    direction: "forward" | "backward" | null;
+  };
+  const [animationState, setAnimationState] = createSignal<AnimationState>({
+    previousHole: null,
+    direction: null,
+  });
   const [showAddPlayerModal, setShowAddPlayerModal] = createSignal(false);
   const [newPlayerName, setNewPlayerName] = createSignal("");
   const [newPlayerColor, setNewPlayerColor] = createSignal("#FF0000");
@@ -128,12 +135,22 @@ export default function Game() {
       }
 
       const currentHole = viewingHole();
+      const currentState = animationState();
       if (currentHole !== newHole && currentHole !== 0) {
-        setPreviousHole(currentHole);
+        // Only update direction if it's null (not explicitly set by navigation)
+        setAnimationState({
+          previousHole: currentHole,
+          direction:
+            currentState.direction ??
+            (newHole > currentHole ? "forward" : "backward"),
+        });
       }
-      // Initialize previousHole to match viewingHole on first load
-      if (previousHole() === null) {
-        setPreviousHole(newHole);
+      // Initialize on first load
+      if (currentState.previousHole === null) {
+        setAnimationState({
+          previousHole: newHole,
+          direction: null,
+        });
       }
       setViewingHole(newHole);
     }
@@ -204,8 +221,7 @@ export default function Game() {
       setTimeout(() => {
         const updatedGame = gameData();
         if (updatedGame) {
-          setViewingHole(updatedGame.currentHole);
-          setSearchParams({ hole: updatedGame.currentHole.toString() });
+          navigateToHole(updatedGame.currentHole, "forward");
         }
       }, 200);
     } catch (error) {
@@ -248,10 +264,23 @@ export default function Game() {
     }
   };
 
-  const navigateToHole = (hole: number) => {
-    setPreviousHole(viewingHole());
+  const navigateToHole = (hole: number, direction: "forward" | "backward") => {
+    const currentHole = viewingHole();
+    // Update all animation state atomically
+    setAnimationState({
+      previousHole: currentHole,
+      direction: direction,
+    });
     setViewingHole(hole);
     setSearchParams({ hole: hole.toString() });
+  };
+
+  const navigateBack = () => {
+    navigateToHole(viewingHoleNum() - 1, "backward");
+  };
+
+  const navigateForward = () => {
+    navigateToHole(viewingHoleNum() + 1, "forward");
   };
 
   const game = () => gameData() as GameData | undefined;
@@ -488,7 +517,7 @@ export default function Game() {
               <div class="max-w-2xl mx-auto">
                 <div class="flex items-center justify-center gap-4 mb-3">
                   <button
-                    onClick={() => navigateToHole(viewingHoleNum() - 1)}
+                    onClick={navigateBack}
                     disabled={viewingHoleNum() === 1}
                     class="min-h-[44px] min-w-[44px] flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed text-gray-600 hover:text-gray-900"
                   >
@@ -498,7 +527,7 @@ export default function Game() {
                     Hole {viewingHoleNum()}
                   </h1>
                   <button
-                    onClick={() => navigateToHole(viewingHoleNum() + 1)}
+                    onClick={navigateForward}
                     disabled={viewingHoleNum() >= currentHole()}
                     class="min-h-[44px] min-w-[44px] flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed text-gray-600 hover:text-gray-900"
                   >
@@ -536,18 +565,27 @@ export default function Game() {
               <Presence exitBeforeEnter>
                 <Show when={viewingHoleNum()} keyed>
                   {(holeNum) => {
-                    const prevHole = previousHole();
-                    // If previousHole is null, default to no direction (first load)
-                    const isGoingForward =
-                      prevHole !== null ? holeNum > prevHole : false;
                     const slideDistance = 50;
-                    // When going forward (next hole): old content exits left, new content comes from right
-                    // When going backward (previous hole): old content exits right, new content comes from left
-                    const initialX = isGoingForward
-                      ? slideDistance
-                      : -slideDistance;
-                    // Exit is opposite of initial
-                    const exitX = -initialX;
+                    // Get direction from consolidated animation state
+                    const direction = animationState().direction;
+
+                    // When going forward: new content comes from right (positive), old content exits left (negative)
+                    // When going backward: new content comes from left (negative), old content exits right (positive)
+                    // If direction is null (first load), no animation
+                    const initialX =
+                      direction === null
+                        ? 0
+                        : direction === "forward"
+                        ? slideDistance
+                        : -slideDistance;
+
+                    const exitX =
+                      direction === null
+                        ? 0
+                        : direction === "forward"
+                        ? -slideDistance
+                        : slideDistance;
+
                     return (
                       <Motion.div
                         initial={{
