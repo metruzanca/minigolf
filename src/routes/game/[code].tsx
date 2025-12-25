@@ -44,6 +44,7 @@ type GameData = {
   shortCode: string;
   numHoles: number;
   currentHole: number;
+  createdAt: Date | string;
   players: Player[];
   scores: Score[];
 };
@@ -87,10 +88,11 @@ export default function Game() {
     holeNumber: number;
   } | null>(null);
 
-  // Add game code to localStorage when page is visited
-  onMount(() => {
-    if (params.code) {
-      addGameCode(params.code);
+  // Add game code to localStorage when page is visited, with timestamp from game data
+  createEffect(() => {
+    const game = gameData();
+    if (game && params.code) {
+      addGameCode(params.code, game.createdAt);
     }
   });
 

@@ -50,8 +50,8 @@ export default function NewGame() {
       }
 
       console.log("Navigating to game", game.shortCode);
-      // Add game code to localStorage
-      addGameCode(game.shortCode);
+      // Add game code to localStorage with timestamp
+      addGameCode(game.shortCode, game.createdAt);
       navigate(`/game/${game.shortCode}`);
     } catch (error) {
       console.error("Failed to create game:", error);

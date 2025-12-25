@@ -7,7 +7,9 @@ export const route = {} satisfies RouteDefinition;
 
 export default function Home() {
   const navigate = useNavigate();
-  const [storedGameCodes, setStoredGameCodes] = createSignal<string[]>([]);
+  const [storedGameCodes, setStoredGameCodes] = createSignal<
+    Array<{ code: string; createdAt: string }>
+  >([]);
 
   // Load stored game codes on mount
   onMount(() => {
@@ -17,6 +19,31 @@ export default function Home() {
   const handleRemoveGameCode = (code: string) => {
     removeGameCode(code);
     setStoredGameCodes(getStoredGameCodes());
+  };
+
+  const formatDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+
+      if (diffMins < 1) return "Just now";
+      if (diffMins < 60) return `${diffMins}m ago`;
+      if (diffHours < 24) return `${diffHours}h ago`;
+      if (diffDays < 7) return `${diffDays}d ago`;
+
+      // For older dates, show formatted date
+      return date.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
+      });
+    } catch {
+      return "";
+    }
   };
 
   return (
@@ -43,16 +70,21 @@ export default function Home() {
             </h2>
             <div class="space-y-2">
               <For each={storedGameCodes()}>
-                {(code) => (
+                {(game) => (
                   <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                     <button
-                      onClick={() => navigate(`/game/${code}`)}
-                      class="flex-1 text-left font-mono font-semibold text-blue-600 hover:text-blue-700"
+                      onClick={() => navigate(`/game/${game.code}`)}
+                      class="flex-1 text-left"
                     >
-                      {code}
+                      <div class="font-mono font-semibold text-blue-600 hover:text-blue-700">
+                        {game.code}
+                      </div>
+                      <div class="text-xs text-gray-500 mt-1">
+                        {formatDate(game.createdAt)}
+                      </div>
                     </button>
                     <button
-                      onClick={() => handleRemoveGameCode(code)}
+                      onClick={() => handleRemoveGameCode(game.code)}
                       class="text-red-600 hover:text-red-700 text-sm font-medium px-2"
                       aria-label="Remove game code"
                     >
