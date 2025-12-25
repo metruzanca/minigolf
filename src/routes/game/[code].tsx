@@ -1,4 +1,4 @@
-import { createSignal, createEffect, For, Show } from "solid-js";
+import { createSignal, createEffect, For, Show, onMount } from "solid-js";
 import {
   useParams,
   useSearchParams,
@@ -14,6 +14,7 @@ import {
   getAverageScoreForHole,
 } from "~/api";
 import type { RouteDefinition } from "@solidjs/router";
+import { addGameCode } from "~/utils/gameStorage";
 
 export const route = {
   load({ params }) {
@@ -81,6 +82,13 @@ export default function Game() {
     currentScore: number;
     holeNumber: number;
   } | null>(null);
+
+  // Add game code to localStorage when page is visited
+  onMount(() => {
+    if (params.code) {
+      addGameCode(params.code);
+    }
+  });
 
   // Initialize viewing hole from URL or current hole
   createEffect(() => {

@@ -2,6 +2,7 @@ import { createSignal, For } from "solid-js";
 import { useNavigate, useAction } from "@solidjs/router";
 import { createGame, addPlayer } from "~/api";
 import type { RouteDefinition } from "@solidjs/router";
+import { addGameCode } from "~/utils/gameStorage";
 
 export const route = {} satisfies RouteDefinition;
 
@@ -51,6 +52,8 @@ export default function NewGame() {
       }
 
       console.log("Navigating to game", game.shortCode);
+      // Add game code to localStorage
+      addGameCode(game.shortCode);
       navigate(`/game/${game.shortCode}`);
     } catch (error) {
       console.error("Failed to create game:", error);
