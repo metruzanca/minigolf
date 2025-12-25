@@ -347,7 +347,11 @@ export default function Game() {
 
   const game = () => gameData() as GameData | undefined;
   const currentHole = () => game()?.currentHole || 1;
-  const viewingHoleNum = () => viewingHole();
+  const viewingHoleNum = () => {
+    const hole = viewingHole();
+    // Ensure we always return a valid hole number (at least 1)
+    return hole > 0 ? hole : 1;
+  };
 
   // Get players with their scores for current viewing hole
   const getPlayersWithScores = () => {
@@ -661,7 +665,7 @@ export default function Game() {
               {/* Player Cards */}
               <div class="max-w-2xl mx-auto p-4 space-y-4">
                 <Presence exitBeforeEnter>
-                  <Show when={viewingHoleNum()} keyed>
+                  <Show when={viewingHoleNum() > 0} keyed>
                     {(holeNum) => {
                       const slideDistance = 50;
                       // Get direction from consolidated animation state
