@@ -17,6 +17,7 @@ import {
 import type { RouteDefinition } from "@solidjs/router";
 import { addGameCode } from "~/utils/gameStorage";
 import { HomeIcon } from "~/components/icons";
+import { Motion, Presence } from "solid-motionone";
 
 // Maximum number of shots allowed (should match server-side MAX_SHOTS env var, default 10)
 const MAX_SHOTS = 10;
@@ -78,6 +79,7 @@ export default function Game() {
     return getGame(params.code);
   });
   const [viewingHole, setViewingHole] = createSignal<number>(1);
+  const [previousHole, setPreviousHole] = createSignal<number>(1);
   const [showAddPlayerModal, setShowAddPlayerModal] = createSignal(false);
   const [newPlayerName, setNewPlayerName] = createSignal("");
   const [newPlayerColor, setNewPlayerColor] = createSignal("#FF0000");
@@ -111,7 +113,12 @@ export default function Game() {
         ? searchParams.hole[0]
         : searchParams.hole;
       const holeFromUrl = holeParam ? parseInt(holeParam) : null;
-      setViewingHole(holeFromUrl || game.currentHole);
+      const newHole = holeFromUrl || game.currentHole;
+      const currentHole = viewingHole();
+      if (currentHole !== newHole && currentHole !== 0) {
+        setPreviousHole(currentHole);
+      }
+      setViewingHole(newHole);
     }
   });
 
@@ -225,6 +232,7 @@ export default function Game() {
   };
 
   const navigateToHole = (hole: number) => {
+    setPreviousHole(viewingHole());
     setViewingHole(hole);
     setSearchParams({ hole: hole.toString() });
   };
@@ -508,121 +516,158 @@ export default function Game() {
 
             {/* Player Cards */}
             <div class="max-w-2xl mx-auto p-4 space-y-4">
-              <For each={getPlayersWithScores().active}>
-                {({ player }) => (
-                  <div class="bg-white border border-gray-200 rounded-lg p-4">
-                    <div class="flex items-center gap-3 mb-4">
-                      <div
-                        class="w-8 h-8 rounded-full border-2 border-gray-300"
-                        style={{ "background-color": player.ballColor }}
-                      ></div>
-                      <h3 class="text-lg font-semibold text-gray-900">
-                        {player.name}
-                      </h3>
-                    </div>
-                    <div class="grid grid-cols-5 gap-1.5">
-                      {getScoreOptions().map((score) => {
-                        const shouldDim = maxScore() > 0 && score < maxScore();
-                        return (
-                          <button
-                            onClick={() => handleScore(player.id, score)}
-                            class={`min-h-[36px] py-1.5 px-2 rounded-md text-sm font-semibold transition-all ${
-                              shouldDim
-                                ? "opacity-40 bg-gray-100 text-gray-600 hover:opacity-60"
-                                : "bg-blue-600 hover:bg-blue-700 text-white"
-                            }`}
-                          >
-                            {score}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </For>
-
-              {/* Completed Players */}
-              <Show when={getPlayersWithScores().completed.length > 0}>
-                <div class="bg-white border border-gray-200 rounded-lg">
-                  <button
-                    onClick={() =>
-                      setCompletedPlayersCollapsed(!completedPlayersCollapsed())
-                    }
-                    class="w-full p-4 flex items-center justify-between"
-                  >
-                    <span class="font-semibold text-gray-900">
-                      Completed ({getPlayersWithScores().completed.length})
-                    </span>
-                    <span class="text-gray-500">
-                      {completedPlayersCollapsed() ? "▼" : "▲"}
-                    </span>
-                  </button>
-                  <Show when={!completedPlayersCollapsed()}>
-                    <div class="p-4 pt-0 space-y-3">
-                      <For each={getPlayersWithScores().completed}>
-                        {({ player, score }) => (
-                          <button
-                            onClick={() =>
-                              setEditingScore({
-                                playerId: player.id,
-                                playerName: player.name,
-                                playerColor: player.ballColor,
-                                currentScore: score.score,
-                                holeNumber: viewingHole(),
-                              })
-                            }
-                            class="w-full flex items-center justify-between p-3 bg-gray-50 rounded hover:bg-gray-100 transition-colors"
-                          >
-                            <div class="flex items-center gap-3">
-                              <div
-                                class="w-6 h-6 rounded-full border border-gray-300"
-                                style={{ "background-color": player.ballColor }}
-                              ></div>
-                              <span class="font-medium text-gray-900">
-                                {player.name}
-                              </span>
+              <Presence exitBeforeEnter>
+                <Show when={viewingHoleNum()} keyed>
+                  {(holeNum) => {
+                    const isGoingForward = holeNum > previousHole();
+                    const slideDistance = 50;
+                    return (
+                      <Motion.div
+                        initial={{
+                          opacity: 0,
+                          x: isGoingForward ? slideDistance : -slideDistance,
+                        }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{
+                          opacity: 0,
+                          x: isGoingForward ? -slideDistance : slideDistance,
+                        }}
+                        transition={{ duration: 0.3, easing: "ease-in-out" }}
+                        class="space-y-4"
+                      >
+                        <For each={getPlayersWithScores().active}>
+                          {({ player }) => (
+                            <div class="bg-white border border-gray-200 rounded-lg p-4">
+                              <div class="flex items-center gap-3 mb-4">
+                                <div
+                                  class="w-8 h-8 rounded-full border-2 border-gray-300"
+                                  style={{
+                                    "background-color": player.ballColor,
+                                  }}
+                                ></div>
+                                <h3 class="text-lg font-semibold text-gray-900">
+                                  {player.name}
+                                </h3>
+                              </div>
+                              <div class="grid grid-cols-5 gap-1.5">
+                                {getScoreOptions().map((score) => {
+                                  const shouldDim =
+                                    maxScore() > 0 && score < maxScore();
+                                  return (
+                                    <button
+                                      onClick={() =>
+                                        handleScore(player.id, score)
+                                      }
+                                      class={`min-h-[36px] py-1.5 px-2 rounded-md text-sm font-semibold transition-all ${
+                                        shouldDim
+                                          ? "opacity-40 bg-gray-100 text-gray-600 hover:opacity-60"
+                                          : "bg-blue-600 hover:bg-blue-700 text-white"
+                                      }`}
+                                    >
+                                      {score}
+                                    </button>
+                                  );
+                                })}
+                              </div>
                             </div>
-                            <span class="font-semibold text-gray-900">
-                              {score.score}
-                            </span>
-                          </button>
-                        )}
-                      </For>
-                    </div>
-                  </Show>
-                </div>
-              </Show>
+                          )}
+                        </For>
 
-              {/* Add Hole / Summary Card - Show when all players have scores and viewing current hole */}
-              <Show
-                when={
-                  viewingHoleNum() === currentHole() &&
-                  getPlayersWithScores().active.length === 0 &&
-                  getPlayersWithScores().completed.length ===
-                    g().players.length &&
-                  g().players.length > 0
-                }
-              >
-                <div class="bg-white border-2 border-blue-500 rounded-lg p-6 space-y-4">
-                  <h3 class="text-lg font-semibold text-gray-900 text-center">
-                    All players have completed this hole
-                  </h3>
-                  <div class="flex gap-3">
-                    <button
-                      onClick={handleAddHole}
-                      class="flex-1 min-h-[44px] bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
-                    >
-                      Add Hole
-                    </button>
-                    <button
-                      onClick={() => setShowSummaryModal(true)}
-                      class="flex-1 min-h-[44px] bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
-                    >
-                      Summary
-                    </button>
-                  </div>
-                </div>
-              </Show>
+                        {/* Completed Players */}
+                        <Show
+                          when={getPlayersWithScores().completed.length > 0}
+                        >
+                          <div class="bg-white border border-gray-200 rounded-lg">
+                            <button
+                              onClick={() =>
+                                setCompletedPlayersCollapsed(
+                                  !completedPlayersCollapsed()
+                                )
+                              }
+                              class="w-full p-4 flex items-center justify-between"
+                            >
+                              <span class="font-semibold text-gray-900">
+                                Completed (
+                                {getPlayersWithScores().completed.length})
+                              </span>
+                              <span class="text-gray-500">
+                                {completedPlayersCollapsed() ? "▼" : "▲"}
+                              </span>
+                            </button>
+                            <Show when={!completedPlayersCollapsed()}>
+                              <div class="p-4 pt-0 space-y-3">
+                                <For each={getPlayersWithScores().completed}>
+                                  {({ player, score }) => (
+                                    <button
+                                      onClick={() =>
+                                        setEditingScore({
+                                          playerId: player.id,
+                                          playerName: player.name,
+                                          playerColor: player.ballColor,
+                                          currentScore: score.score,
+                                          holeNumber: viewingHole(),
+                                        })
+                                      }
+                                      class="w-full flex items-center justify-between p-3 bg-gray-50 rounded hover:bg-gray-100 transition-colors"
+                                    >
+                                      <div class="flex items-center gap-3">
+                                        <div
+                                          class="w-6 h-6 rounded-full border border-gray-300"
+                                          style={{
+                                            "background-color":
+                                              player.ballColor,
+                                          }}
+                                        ></div>
+                                        <span class="font-medium text-gray-900">
+                                          {player.name}
+                                        </span>
+                                      </div>
+                                      <span class="font-semibold text-gray-900">
+                                        {score.score}
+                                      </span>
+                                    </button>
+                                  )}
+                                </For>
+                              </div>
+                            </Show>
+                          </div>
+                        </Show>
+
+                        {/* Add Hole / Summary Card - Show when all players have scores and viewing current hole */}
+                        <Show
+                          when={
+                            viewingHoleNum() === currentHole() &&
+                            getPlayersWithScores().active.length === 0 &&
+                            getPlayersWithScores().completed.length ===
+                              g().players.length &&
+                            g().players.length > 0
+                          }
+                        >
+                          <div class="bg-white border-2 border-blue-500 rounded-lg p-6 space-y-4">
+                            <h3 class="text-lg font-semibold text-gray-900 text-center">
+                              All players have completed this hole
+                            </h3>
+                            <div class="flex gap-3">
+                              <button
+                                onClick={handleAddHole}
+                                class="flex-1 min-h-[44px] bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+                              >
+                                Add Hole
+                              </button>
+                              <button
+                                onClick={() => setShowSummaryModal(true)}
+                                class="flex-1 min-h-[44px] bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+                              >
+                                Summary
+                              </button>
+                            </div>
+                          </div>
+                        </Show>
+                      </Motion.div>
+                    );
+                  }}
+                </Show>
+              </Presence>
             </div>
 
             {/* Add Player Modal */}
