@@ -122,14 +122,15 @@ export async function createGame() {
         shortCode,
         numHoles: 1, // Start with 1 hole, add more as needed
         currentHole: 1,
+        createdAt: new Date(),
       })
       .returning()
       .get();
 
     return game;
   } catch (error) {
-    console.error(error);
-    throw new Error("Failed to create game");
+    console.error("Error creating game:", error);
+    throw error instanceof Error ? error : new Error("Failed to create game");
   }
 }
 
@@ -172,6 +173,7 @@ export async function addPlayer(
       gameId,
       name,
       ballColor,
+      createdAt: new Date(),
     })
     .returning()
     .get();
@@ -215,6 +217,7 @@ export async function addScore(
         gameId,
         holeNumber,
         score,
+        createdAt: new Date(),
       })
       .returning()
       .get();
