@@ -234,12 +234,30 @@ export default function Game() {
     return { active, completed };
   };
 
+  // Check if all players have completed the current hole
+  const allPlayersCompletedCurrentHole = () => {
+    const g = game();
+    if (!g) return false;
+    const playersWithScores = getPlayersWithScores();
+    return (
+      viewingHoleNum() === currentHole() &&
+      playersWithScores.active.length === 0 &&
+      playersWithScores.completed.length === g.players.length &&
+      g.players.length > 0
+    );
+  };
+
   // Calculate total score for a player
   const getTotalScore = (playerId: number) => {
     const g = game();
     if (!g) return 0;
+    const maxHoleToInclude = allPlayersCompletedCurrentHole()
+      ? currentHole()
+      : currentHole() - 1;
     return g.scores
-      .filter((s) => s.playerId === playerId && s.holeNumber < currentHole())
+      .filter(
+        (s) => s.playerId === playerId && s.holeNumber <= maxHoleToInclude
+      )
       .reduce((sum, s) => sum + s.score, 0);
   };
 
@@ -247,13 +265,16 @@ export default function Game() {
   const getScoreboardPlayers = () => {
     const g = game();
     if (!g) return [];
+    const maxHoleToInclude = allPlayersCompletedCurrentHole()
+      ? currentHole()
+      : currentHole() - 1;
 
     return g.players
       .map((player) => ({
         player,
         totalScore: getTotalScore(player.id),
         holesPlayed: g.scores.filter(
-          (s) => s.playerId === player.id && s.holeNumber < currentHole()
+          (s) => s.playerId === player.id && s.holeNumber <= maxHoleToInclude
         ).length,
       }))
       .sort((a, b) => {
