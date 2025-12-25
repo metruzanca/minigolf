@@ -372,3 +372,64 @@ export async function addHole(gameId: number) {
     .returning()
     .get();
 }
+
+export async function updatePlayer(
+  playerId: number,
+  gameId: number,
+  name: string,
+  ballColor: string
+) {
+  // Validate gameId
+  if (!Number.isInteger(gameId) || gameId <= 0) {
+    throw new Error("Invalid game ID");
+  }
+
+  // Validate playerId
+  if (!Number.isInteger(playerId) || playerId <= 0) {
+    throw new Error("Invalid player ID");
+  }
+
+  // Validate name
+  if (typeof name !== "string" || !name.trim()) {
+    throw new Error("Player name is required");
+  }
+  const trimmedName = name.trim();
+  if (trimmedName.length < 1 || trimmedName.length > 50) {
+    throw new Error("Player name must be between 1 and 50 characters");
+  }
+
+  // Validate ballColor (basic hex color validation)
+  if (typeof ballColor !== "string" || !/^#[0-9A-Fa-f]{6}$/.test(ballColor)) {
+    throw new Error("Invalid ball color format");
+  }
+
+  // Verify game exists
+  const game = await db
+    .select()
+    .from(Games)
+    .where(eq(Games.id, gameId))
+    .get();
+  if (!game) {
+    throw new Error("Game not found");
+  }
+
+  // Verify player belongs to this game
+  const player = await db
+    .select()
+    .from(Players)
+    .where(and(eq(Players.id, playerId), eq(Players.gameId, gameId)))
+    .get();
+  if (!player) {
+    throw new Error("Player not found in this game");
+  }
+
+  return await db
+    .update(Players)
+    .set({
+      name: trimmedName,
+      ballColor,
+    })
+    .where(eq(Players.id, playerId))
+    .returning()
+    .get();
+}

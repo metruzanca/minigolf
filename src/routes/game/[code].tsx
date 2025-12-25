@@ -13,6 +13,7 @@ import {
   addPlayer,
   getAverageScoreForHole,
   addHole,
+  updatePlayer,
 } from "~/api";
 import type { RouteDefinition } from "@solidjs/router";
 import { addGameCode } from "~/utils/gameStorage";
@@ -67,6 +68,7 @@ export default function Game() {
   const updateCurrentHoleAction = useAction(updateCurrentHole);
   const addPlayerAction = useAction(addPlayer);
   const addHoleAction = useAction(addHole);
+  const updatePlayerAction = useAction(updatePlayer);
 
   // Force refresh signal to trigger query revalidation
   const [refreshKey, setRefreshKey] = createSignal(0);
@@ -119,6 +121,14 @@ export default function Game() {
     currentScore: number;
     holeNumber: number;
   } | null>(null);
+  const [editingPlayer, setEditingPlayer] = createSignal<{
+    playerId: number;
+    playerName: string;
+    playerColor: string;
+  } | null>(null);
+  const [editPlayerName, setEditPlayerName] = createSignal("");
+  const [editPlayerColor, setEditPlayerColor] = createSignal("#FF0000");
+  const [isUpdatingPlayer, setIsUpdatingPlayer] = createSignal(false);
 
   // Add game code to localStorage when page is visited, with timestamp from game data
   createEffect(() => {
@@ -279,6 +289,42 @@ export default function Game() {
       setIsAddingPlayer(false);
     }
   };
+
+  const handleUpdatePlayer = async () => {
+    const game = gameData();
+    const editing = editingPlayer();
+    if (!game || !editing || !editPlayerName().trim()) return;
+
+    setIsUpdatingPlayer(true);
+    try {
+      await updatePlayerAction(
+        editing.playerId,
+        game.id,
+        editPlayerName().trim(),
+        editPlayerColor()
+      );
+
+      setEditingPlayer(null);
+      setEditPlayerName("");
+      setEditPlayerColor("#FF0000");
+      // Force query refresh by updating the refresh key
+      setRefreshKey((prev) => prev + 1);
+    } catch (error) {
+      console.error("Failed to update player:", error);
+      alert("Failed to update player. Please try again.");
+    } finally {
+      setIsUpdatingPlayer(false);
+    }
+  };
+
+  // Initialize edit form when editingPlayer changes
+  createEffect(() => {
+    const editing = editingPlayer();
+    if (editing) {
+      setEditPlayerName(editing.playerName);
+      setEditPlayerColor(editing.playerColor);
+    }
+  });
 
   const navigateToHole = (hole: number, direction: "forward" | "backward") => {
     const currentHole = viewingHole();
@@ -590,8 +636,15 @@ export default function Game() {
                     <div class="flex gap-3 min-w-max pb-2">
                       <For each={getScoreboardPlayers()}>
                         {(item, index) => (
-                          <div
-                            class="flex flex-col items-center justify-center p-4 rounded-lg min-w-[100px] shadow-sm border-2"
+                          <button
+                            onClick={() => {
+                              setEditingPlayer({
+                                playerId: item.player.id,
+                                playerName: item.player.name,
+                                playerColor: item.player.ballColor,
+                              });
+                            }}
+                            class="flex flex-col items-center justify-center p-4 rounded-lg min-w-[100px] shadow-sm border-2 cursor-pointer hover:opacity-100 transition-opacity active:scale-95"
                             style={{
                               "background-color": item.player.ballColor,
                               "border-color": item.player.ballColor,
@@ -604,7 +657,7 @@ export default function Game() {
                             <span class="text-sm font-medium text-white drop-shadow-md text-center">
                               {item.player.name}
                             </span>
-                          </div>
+                          </button>
                         )}
                       </For>
                     </div>
@@ -891,6 +944,70 @@ export default function Game() {
                           class="flex-1 min-h-[44px] bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-semibold py-2 px-4 rounded-lg transition-colors"
                         >
                           Cancel
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </Show>
+
+              {/* Edit Player Modal */}
+              <Show when={editingPlayer()}>
+                {(editing) => (
+                  <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full space-y-4">
+                      <h3 class="text-xl font-bold text-gray-900 dark:text-white">
+                        Edit Player
+                      </h3>
+                      <div>
+                        <label
+                          for="editPlayerName"
+                          class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                        >
+                          Player Name
+                        </label>
+                        <input
+                          id="editPlayerName"
+                          type="text"
+                          value={editPlayerName()}
+                          onInput={(e) => setEditPlayerName(e.currentTarget.value)}
+                          onKeyPress={(e) => e.key === "Enter" && handleUpdatePlayer()}
+                          placeholder="Enter player name"
+                          class="w-full min-h-[44px] px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label
+                          for="editPlayerColor"
+                          class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                        >
+                          Ball Color
+                        </label>
+                        <input
+                          id="editPlayerColor"
+                          type="color"
+                          value={editPlayerColor()}
+                          onInput={(e) => setEditPlayerColor(e.currentTarget.value)}
+                          class="h-10 w-full border border-gray-300 dark:border-gray-600 rounded cursor-pointer"
+                        />
+                      </div>
+                      <div class="flex gap-3">
+                        <button
+                          onClick={() => {
+                            setEditingPlayer(null);
+                            setEditPlayerName("");
+                            setEditPlayerColor("#FF0000");
+                          }}
+                          class="flex-1 min-h-[44px] bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={handleUpdatePlayer}
+                          disabled={!editPlayerName().trim() || isUpdatingPlayer()}
+                          class="flex-1 min-h-[44px] bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+                        >
+                          {isUpdatingPlayer() ? "Updating..." : "Update"}
                         </button>
                       </div>
                     </div>
