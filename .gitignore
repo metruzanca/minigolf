@@ -29,3 +29,8 @@ Thumbs.db
 
 # DB
 drizzle/db.sqlite
+
+# We're using bun, so we don't need these locks
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
