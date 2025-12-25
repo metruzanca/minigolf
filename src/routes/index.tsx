@@ -95,29 +95,29 @@ export default function Home() {
         name="twitter:description"
         content="Track your minigolf scores with friends. Create games, add players, and keep score in real-time."
       />
-      <main class="min-h-screen flex flex-col items-center justify-center p-4 bg-gray-50">
+      <main class="min-h-screen flex flex-col items-center justify-center p-4 bg-gray-50 dark:bg-gray-900">
         <div class="max-w-md w-full space-y-8">
           <div class="text-center">
-            <h1 class="text-4xl font-bold text-gray-900 mb-2">
+            <h1 class="text-4xl font-bold text-gray-900 dark:text-white mb-2">
               Minigolf Tracker
             </h1>
-            <p class="text-gray-600">Track your minigolf scores</p>
+            <p class="text-gray-600 dark:text-gray-400">Track your minigolf scores</p>
           </div>
 
           {/* Error Message */}
           <Show when={errorMessage()}>
             {(error) => (
-              <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
                 <div class="flex items-start justify-between">
                   <div class="flex-1">
-                    <h3 class="text-sm font-semibold text-red-800 mb-1">
+                    <h3 class="text-sm font-semibold text-red-800 dark:text-red-400 mb-1">
                       Error
                     </h3>
-                    <p class="text-sm text-red-700">{error()}</p>
+                    <p class="text-sm text-red-700 dark:text-red-300">{error()}</p>
                   </div>
                   <button
                     onClick={clearError}
-                    class="ml-4 text-red-600 hover:text-red-800 min-h-[44px] min-w-[44px] flex items-center justify-center"
+                    class="ml-4 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 min-h-[44px] min-w-[44px] flex items-center justify-center"
                     aria-label="Dismiss error"
                   >
                     <svg
@@ -148,28 +148,28 @@ export default function Home() {
 
           {/* Stored Game Codes */}
           {storedGameCodes().length > 0 && (
-            <div class="bg-white border border-gray-200 rounded-lg p-4">
-              <h2 class="text-lg font-semibold text-gray-900 mb-3">
+            <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+              <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">
                 Recent Games
               </h2>
               <div class="space-y-2">
                 <For each={storedGameCodes()}>
                   {(game) => (
-                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                    <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
                       <button
                         onClick={() => navigate(`/game/${game.code}`)}
                         class="flex-1 text-left"
                       >
-                        <div class="font-mono font-semibold text-blue-600 hover:text-blue-700">
+                        <div class="font-mono font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300">
                           {game.code}
                         </div>
-                        <div class="text-xs text-gray-500 mt-1">
+                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
                           {formatDate(game.createdAt)}
                         </div>
                       </button>
                       <button
                         onClick={() => handleRemoveGameCode(game.code)}
-                        class="text-red-600 hover:text-red-700 text-sm font-medium px-2"
+                        class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 text-sm font-medium px-2"
                         aria-label="Remove game code"
                       >
                         ×
@@ -181,13 +181,13 @@ export default function Home() {
             </div>
           )}
         </div>
-        <div class="mt-auto pt-8 pb-4 text-center text-sm text-gray-500">
+        <div class="mt-auto pt-8 pb-4 text-center text-sm text-gray-500 dark:text-gray-400">
           Made with <span class="text-red-400">♥</span> by{" "}
           <a
             href="https://github.com/metruzanca"
             target="_blank"
             rel="noopener noreferrer"
-            class="text-blue-600 hover:text-blue-700 underline"
+            class="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 underline"
           >
             metruzanca
           </a>

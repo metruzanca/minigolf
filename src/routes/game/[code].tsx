@@ -457,16 +457,16 @@ export default function Game() {
   };
 
   return (
-    <main class="min-h-screen bg-gray-50">
+    <main class="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Show
         when={game()}
         fallback={
           <div class="min-h-screen flex items-center justify-center p-4">
             <div class="text-center">
-              <h1 class="text-2xl font-bold text-gray-900 mb-4">
+              <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
                 Game Not Found
               </h1>
-              <p class="text-gray-600 mb-6">
+              <p class="text-gray-600 dark:text-gray-400 mb-6">
                 The game you're looking for doesn't exist.
               </p>
               <a
@@ -545,7 +545,7 @@ export default function Game() {
                         onClick={() => setShowMenu(false)}
                       >
                         <div
-                          class="absolute right-4 top-16 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-30"
+                          class="absolute right-4 top-16 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-30"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <button
@@ -553,7 +553,7 @@ export default function Game() {
                               setShowAddPlayerModal(true);
                               setShowMenu(false);
                             }}
-                            class="w-full text-left px-4 py-2 text-gray-900 hover:bg-gray-100 transition-colors"
+                            class="w-full text-left px-4 py-2 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                           >
                             Add Player
                           </button>
@@ -565,23 +565,23 @@ export default function Game() {
               </div>
 
               {/* Scoreboard */}
-              <div class="bg-white border-b border-gray-200 p-4 sticky top-[60px] z-10">
+              <div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 sticky top-[60px] z-10">
                 <div class="max-w-2xl mx-auto">
                   <div class="flex items-center justify-center gap-4 mb-3">
                     <button
                       onClick={navigateBack}
                       disabled={viewingHoleNum() === 1}
-                      class="min-h-[44px] min-w-[44px] flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed text-gray-600 hover:text-gray-900"
+                      class="min-h-[44px] min-w-[44px] flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
                     >
                       ←
                     </button>
-                    <h1 class="text-xl font-bold text-gray-900">
+                    <h1 class="text-xl font-bold text-gray-900 dark:text-white">
                       Hole {viewingHoleNum()}
                     </h1>
                     <button
                       onClick={navigateForward}
                       disabled={viewingHoleNum() >= currentHole()}
-                      class="min-h-[44px] min-w-[44px] flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed text-gray-600 hover:text-gray-900"
+                      class="min-h-[44px] min-w-[44px] flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
                     >
                       →
                     </button>
@@ -654,15 +654,15 @@ export default function Game() {
                         >
                           <For each={getPlayersWithScores().active}>
                             {({ player }) => (
-                              <div class="bg-white border border-gray-200 rounded-lg p-4">
+                              <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                                 <div class="flex items-center gap-3 mb-4">
                                   <div
-                                    class="w-8 h-8 rounded-full border-2 border-gray-300"
+                                    class="w-8 h-8 rounded-full border-2 border-gray-300 dark:border-gray-600"
                                     style={{
                                       "background-color": player.ballColor,
                                     }}
                                   ></div>
-                                  <h3 class="text-lg font-semibold text-gray-900">
+                                  <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
                                     {player.name}
                                   </h3>
                                 </div>
@@ -677,7 +677,7 @@ export default function Game() {
                                         }
                                         class={`min-h-[36px] py-1.5 px-2 rounded-md text-sm font-semibold transition-all ${
                                           shouldDim
-                                            ? "opacity-40 bg-gray-100 text-gray-600 hover:opacity-60"
+                                            ? "opacity-40 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:opacity-60"
                                             : "bg-blue-600 hover:bg-blue-700 text-white"
                                         }`}
                                       >
@@ -694,7 +694,7 @@ export default function Game() {
                           <Show
                             when={getPlayersWithScores().completed.length > 0}
                           >
-                            <div class="bg-white border border-gray-200 rounded-lg">
+                            <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
                               <button
                                 onClick={() =>
                                   setCompletedPlayersCollapsed(
@@ -703,11 +703,11 @@ export default function Game() {
                                 }
                                 class="w-full p-4 flex items-center justify-between"
                               >
-                                <span class="font-semibold text-gray-900">
+                                <span class="font-semibold text-gray-900 dark:text-white">
                                   Completed (
                                   {getPlayersWithScores().completed.length})
                                 </span>
-                                <span class="text-gray-500">
+                                <span class="text-gray-500 dark:text-gray-400">
                                   {completedPlayersCollapsed() ? "▼" : "▲"}
                                 </span>
                               </button>
@@ -725,21 +725,21 @@ export default function Game() {
                                             holeNumber: viewingHole(),
                                           })
                                         }
-                                        class="w-full flex items-center justify-between p-3 bg-gray-50 rounded hover:bg-gray-100 transition-colors"
+                                        class="w-full flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                                       >
                                         <div class="flex items-center gap-3">
                                           <div
-                                            class="w-6 h-6 rounded-full border border-gray-300"
+                                            class="w-6 h-6 rounded-full border border-gray-300 dark:border-gray-600"
                                             style={{
                                               "background-color":
                                                 player.ballColor,
                                             }}
                                           ></div>
-                                          <span class="font-medium text-gray-900">
+                                          <span class="font-medium text-gray-900 dark:text-white">
                                             {player.name}
                                           </span>
                                         </div>
-                                        <span class="font-semibold text-gray-900">
+                                        <span class="font-semibold text-gray-900 dark:text-white">
                                           {score.score}
                                         </span>
                                       </button>
@@ -760,8 +760,8 @@ export default function Game() {
                               g().players.length > 0
                             }
                           >
-                            <div class="bg-white border-2 border-blue-500 rounded-lg p-6 space-y-4">
-                              <h3 class="text-lg font-semibold text-gray-900 text-center">
+                            <div class="bg-white dark:bg-gray-800 border-2 border-blue-500 dark:border-blue-400 rounded-lg p-6 space-y-4">
+                              <h3 class="text-lg font-semibold text-gray-900 dark:text-white text-center">
                                 All players have completed this hole
                               </h3>
                               <div class="flex gap-3">
@@ -790,12 +790,12 @@ export default function Game() {
               {/* Add Player Modal */}
               <Show when={showAddPlayerModal()}>
                 <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                  <div class="bg-white rounded-lg p-6 max-w-md w-full space-y-4">
-                    <h3 class="text-xl font-bold text-gray-900">Add Player</h3>
+                  <div class="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full space-y-4">
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-white">Add Player</h3>
                     <div>
                       <label
                         for="newPlayerName"
-                        class="block text-sm font-medium text-gray-700 mb-2"
+                        class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
                       >
                         Player Name
                       </label>
@@ -805,13 +805,13 @@ export default function Game() {
                         value={newPlayerName()}
                         onInput={(e) => setNewPlayerName(e.currentTarget.value)}
                         placeholder="Enter player name"
-                        class="w-full min-h-[44px] px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        class="w-full min-h-[44px] px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       />
                     </div>
                     <div>
                       <label
                         for="newPlayerColor"
-                        class="block text-sm font-medium text-gray-700 mb-2"
+                        class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
                       >
                         Ball Color
                       </label>
@@ -822,7 +822,7 @@ export default function Game() {
                         onInput={(e) =>
                           setNewPlayerColor(e.currentTarget.value)
                         }
-                        class="h-10 w-full border border-gray-300 rounded cursor-pointer"
+                        class="h-10 w-full border border-gray-300 dark:border-gray-600 rounded cursor-pointer"
                       />
                     </div>
                     <div class="flex gap-3">
@@ -832,14 +832,14 @@ export default function Game() {
                           setNewPlayerName("");
                           setNewPlayerColor("#FF0000");
                         }}
-                        class="flex-1 min-h-[44px] bg-gray-200 hover:bg-gray-300 text-gray-900 font-semibold py-2 px-4 rounded-lg transition-colors"
+                        class="flex-1 min-h-[44px] bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-semibold py-2 px-4 rounded-lg transition-colors"
                       >
                         Cancel
                       </button>
                       <button
                         onClick={handleAddPlayer}
                         disabled={!newPlayerName().trim() || isAddingPlayer()}
-                        class="flex-1 min-h-[44px] bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+                        class="flex-1 min-h-[44px] bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold py-2 px-4 rounded-lg transition-colors"
                       >
                         {isAddingPlayer() ? "Adding..." : "Add"}
                       </button>
@@ -852,24 +852,24 @@ export default function Game() {
               <Show when={editingScore()}>
                 {(editing) => (
                   <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                    <div class="bg-white rounded-lg p-6 max-w-md w-full space-y-4">
-                      <h3 class="text-xl font-bold text-gray-900">
+                    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full space-y-4">
+                      <h3 class="text-xl font-bold text-gray-900 dark:text-white">
                         Edit Score - {editing().playerName}
                       </h3>
                       <div class="flex items-center gap-3 mb-4">
                         <div
-                          class="w-8 h-8 rounded-full border-2 border-gray-300"
+                          class="w-8 h-8 rounded-full border-2 border-gray-300 dark:border-gray-600"
                           style={{ "background-color": editing().playerColor }}
                         ></div>
                         <div>
-                          <p class="text-sm text-gray-600">Current Score</p>
-                          <p class="text-lg font-semibold text-gray-900">
+                          <p class="text-sm text-gray-600 dark:text-gray-400">Current Score</p>
+                          <p class="text-lg font-semibold text-gray-900 dark:text-white">
                             {editing().currentScore}
                           </p>
                         </div>
                       </div>
                       <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-3">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                           Select New Score
                         </label>
                         <div class="grid grid-cols-5 gap-1.5">
@@ -888,7 +888,7 @@ export default function Game() {
                       <div class="flex gap-3">
                         <button
                           onClick={() => setEditingScore(null)}
-                          class="flex-1 min-h-[44px] bg-gray-200 hover:bg-gray-300 text-gray-900 font-semibold py-2 px-4 rounded-lg transition-colors"
+                          class="flex-1 min-h-[44px] bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-semibold py-2 px-4 rounded-lg transition-colors"
                         >
                           Cancel
                         </button>
@@ -901,14 +901,14 @@ export default function Game() {
               {/* Summary Modal */}
               <Show when={showSummaryModal()}>
                 <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-                  <div class="bg-white rounded-lg p-6 max-w-4xl w-full my-8 space-y-6">
+                  <div class="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-4xl w-full my-8 space-y-6">
                     <div class="flex items-center justify-between">
-                      <h3 class="text-2xl font-bold text-gray-900">
+                      <h3 class="text-2xl font-bold text-gray-900 dark:text-white">
                         Game Summary
                       </h3>
                       <button
                         onClick={() => setShowSummaryModal(false)}
-                        class="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors"
+                        class="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
                         aria-label="Close"
                       >
                         <svg
@@ -929,7 +929,7 @@ export default function Game() {
 
                     {/* Overall Standings */}
                     <div>
-                      <h4 class="text-lg font-semibold text-gray-900 mb-3">
+                      <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">
                         Overall Standings
                       </h4>
                       <div class="space-y-2">
@@ -951,26 +951,26 @@ export default function Game() {
                                 {index() + 1}
                               </div>
                               <div
-                                class="w-6 h-6 rounded-full border-2 border-gray-300"
+                                class="w-6 h-6 rounded-full border-2 border-gray-300 dark:border-gray-600"
                                 style={{
                                   "background-color": item.player.ballColor,
                                 }}
                               ></div>
                               <div class="flex-1">
-                                <p class="font-semibold text-gray-900">
+                                <p class="font-semibold text-gray-900 dark:text-white">
                                   {item.player.name}
                                 </p>
-                                <p class="text-sm text-gray-600">
+                                <p class="text-sm text-gray-600 dark:text-gray-400">
                                   {item.holesPlayed} hole
                                   {item.holesPlayed !== 1 ? "s" : ""} • Avg:{" "}
                                   {getSummaryAverageScore(item.player.id)}
                                 </p>
                               </div>
                               <div class="text-right">
-                                <p class="text-2xl font-bold text-gray-900">
+                                <p class="text-2xl font-bold text-gray-900 dark:text-white">
                                   {item.totalScore}
                                 </p>
-                                <p class="text-xs text-gray-500">Total</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">Total</p>
                               </div>
                             </div>
                           )}
@@ -980,14 +980,14 @@ export default function Game() {
 
                     {/* Per-Hole Breakdown */}
                     <div>
-                      <h4 class="text-lg font-semibold text-gray-900 mb-3">
+                      <h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">
                         Per-Hole Breakdown
                       </h4>
                       <div class="overflow-x-auto">
                         <table class="w-full border-collapse">
                           <thead>
-                            <tr class="bg-gray-100">
-                              <th class="text-left p-2 font-semibold text-gray-900 sticky left-0 bg-gray-100 z-10">
+                            <tr class="bg-gray-100 dark:bg-gray-700">
+                              <th class="text-left p-2 font-semibold text-gray-900 dark:text-white sticky left-0 bg-gray-100 dark:bg-gray-700 z-10">
                                 Player
                               </th>
                               <For
@@ -997,15 +997,15 @@ export default function Game() {
                                 )}
                               >
                                 {(holeNum) => (
-                                  <th class="text-center p-2 font-semibold text-gray-900 min-w-[50px]">
+                                  <th class="text-center p-2 font-semibold text-gray-900 dark:text-white min-w-[50px]">
                                     H{holeNum}
                                   </th>
                                 )}
                               </For>
-                              <th class="text-center p-2 font-semibold text-gray-900 bg-gray-100">
+                              <th class="text-center p-2 font-semibold text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-700">
                                 Total
                               </th>
-                              <th class="text-center p-2 font-semibold text-gray-900 bg-gray-100">
+                              <th class="text-center p-2 font-semibold text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-700">
                                 Avg
                               </th>
                             </tr>
@@ -1013,17 +1013,17 @@ export default function Game() {
                           <tbody>
                             <For each={getSummaryPlayers()}>
                               {(item) => (
-                                <tr class="border-b border-gray-200 hover:bg-gray-50">
-                                  <td class="p-2 sticky left-0 bg-white z-10">
+                                <tr class="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                  <td class="p-2 sticky left-0 bg-white dark:bg-gray-800 z-10">
                                     <div class="flex items-center gap-2">
                                       <div
-                                        class="w-4 h-4 rounded-full border border-gray-300"
+                                        class="w-4 h-4 rounded-full border border-gray-300 dark:border-gray-600"
                                         style={{
                                           "background-color":
                                             item.player.ballColor,
                                         }}
                                       ></div>
-                                      <span class="font-medium text-gray-900">
+                                      <span class="font-medium text-gray-900 dark:text-white">
                                         {item.player.name}
                                       </span>
                                     </div>
@@ -1042,20 +1042,20 @@ export default function Game() {
                                       return (
                                         <td class="text-center p-2">
                                           {score !== null ? (
-                                            <span class="font-semibold text-gray-900">
+                                            <span class="font-semibold text-gray-900 dark:text-white">
                                               {score}
                                             </span>
                                           ) : (
-                                            <span class="text-gray-400">-</span>
+                                            <span class="text-gray-400 dark:text-gray-500">-</span>
                                           )}
                                         </td>
                                       );
                                     }}
                                   </For>
-                                  <td class="text-center p-2 font-bold text-gray-900 bg-gray-50">
+                                  <td class="text-center p-2 font-bold text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700/50">
                                     {item.totalScore}
                                   </td>
-                                  <td class="text-center p-2 font-semibold text-gray-700 bg-gray-50">
+                                  <td class="text-center p-2 font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/50">
                                     {getSummaryAverageScore(item.player.id)}
                                   </td>
                                 </tr>
