@@ -15,8 +15,6 @@ export default function NewGame() {
   const navigate = useNavigate();
   const createGameAction = useAction(createGame);
   const addPlayerAction = useAction(addPlayer);
-  const [step, setStep] = createSignal<1 | 2>(1);
-  const [numHoles, setNumHoles] = createSignal<number>(18);
   const [players, setPlayers] = createSignal<PlayerInput[]>([]);
   const [currentPlayerName, setCurrentPlayerName] = createSignal("");
   const [currentPlayerColor, setCurrentPlayerColor] = createSignal("#FF0000");
@@ -36,8 +34,8 @@ export default function NewGame() {
 
     setIsCreating(true);
     try {
-      console.log("Creating game with", numHoles(), "holes");
-      const game = await createGameAction(numHoles());
+      console.log("Creating game");
+      const game = await createGameAction();
 
       console.log("Game created:", game);
       // Add all players
@@ -67,130 +65,100 @@ export default function NewGame() {
       <div class="max-w-md mx-auto space-y-6">
         <div class="flex items-center justify-between mb-6">
           <button
-            onClick={() => (step() === 1 ? navigate("/") : setStep(1))}
+            onClick={() => navigate("/")}
             class="text-blue-600 hover:text-blue-700 font-medium"
           >
-            {step() === 1 ? "← Back" : "← Previous"}
+            ← Back
           </button>
           <h1 class="text-2xl font-bold text-gray-900">New Game</h1>
           <div class="w-16"></div>
         </div>
 
-        {step() === 1 ? (
-          <div class="space-y-6">
-            <div>
+        <div class="space-y-6">
+          <div>
+            <label
+              for="playerName"
+              class="block text-sm font-medium text-gray-700 mb-2"
+            >
+              Player Name
+            </label>
+            <input
+              id="playerName"
+              type="text"
+              value={currentPlayerName()}
+              onInput={(e) => setCurrentPlayerName(e.currentTarget.value)}
+              onKeyPress={(e) => e.key === "Enter" && handleAddPlayer()}
+              placeholder="Enter player name"
+              class="w-full min-h-[44px] px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mb-3"
+            />
+            <div class="flex items-center gap-4 mb-3">
               <label
-                for="numHoles"
-                class="block text-sm font-medium text-gray-700 mb-2"
+                for="ballColor"
+                class="block text-sm font-medium text-gray-700"
               >
-                Number of Holes
+                Ball Color
               </label>
               <input
-                id="numHoles"
-                type="number"
-                min="1"
-                max="36"
-                value={numHoles()}
-                onInput={(e) =>
-                  setNumHoles(parseInt(e.currentTarget.value) || 18)
-                }
-                class="w-full min-h-[44px] px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                id="ballColor"
+                type="color"
+                value={currentPlayerColor()}
+                onInput={(e) => setCurrentPlayerColor(e.currentTarget.value)}
+                class="h-10 w-20 border border-gray-300 rounded cursor-pointer"
               />
             </div>
             <button
-              onClick={() => setStep(2)}
-              class="w-full min-h-[44px] bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+              onClick={handleAddPlayer}
+              disabled={!currentPlayerName().trim()}
+              class="w-full min-h-[44px] bg-gray-600 hover:bg-gray-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold py-2 px-4 rounded-lg transition-colors"
             >
-              Next: Add Players
+              Add Player
             </button>
           </div>
-        ) : (
-          <div class="space-y-6">
-            <div>
-              <label
-                for="playerName"
-                class="block text-sm font-medium text-gray-700 mb-2"
-              >
-                Player Name
-              </label>
-              <input
-                id="playerName"
-                type="text"
-                value={currentPlayerName()}
-                onInput={(e) => setCurrentPlayerName(e.currentTarget.value)}
-                onKeyPress={(e) => e.key === "Enter" && handleAddPlayer()}
-                placeholder="Enter player name"
-                class="w-full min-h-[44px] px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mb-3"
-              />
-              <div class="flex items-center gap-4 mb-3">
-                <label
-                  for="ballColor"
-                  class="block text-sm font-medium text-gray-700"
-                >
-                  Ball Color
-                </label>
-                <input
-                  id="ballColor"
-                  type="color"
-                  value={currentPlayerColor()}
-                  onInput={(e) => setCurrentPlayerColor(e.currentTarget.value)}
-                  class="h-10 w-20 border border-gray-300 rounded cursor-pointer"
-                />
-              </div>
-              <button
-                onClick={handleAddPlayer}
-                disabled={!currentPlayerName().trim()}
-                class="w-full min-h-[44px] bg-gray-600 hover:bg-gray-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold py-2 px-4 rounded-lg transition-colors"
-              >
-                Add Player
-              </button>
-            </div>
 
-            {players().length > 0 && (
+          {players().length > 0 && (
+            <div class="space-y-2">
+              <h2 class="text-lg font-semibold text-gray-900">
+                Players ({players().length})
+              </h2>
               <div class="space-y-2">
-                <h2 class="text-lg font-semibold text-gray-900">
-                  Players ({players().length})
-                </h2>
-                <div class="space-y-2">
-                  <For each={players()}>
-                    {(player, index) => (
-                      <div class="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg">
-                        <div class="flex items-center gap-3">
-                          <div
-                            class="w-6 h-6 rounded-full border-2 border-gray-300"
-                            style={{ "background-color": player.ballColor }}
-                          ></div>
-                          <span class="font-medium text-gray-900">
-                            {player.name}
-                          </span>
-                        </div>
-                        <button
-                          onClick={() => {
-                            const newPlayers = players().filter(
-                              (_, i) => i !== index()
-                            );
-                            setPlayers(newPlayers);
-                          }}
-                          class="text-red-600 hover:text-red-700 text-sm font-medium"
-                        >
-                          Remove
-                        </button>
+                <For each={players()}>
+                  {(player, index) => (
+                    <div class="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg">
+                      <div class="flex items-center gap-3">
+                        <div
+                          class="w-6 h-6 rounded-full border-2 border-gray-300"
+                          style={{ "background-color": player.ballColor }}
+                        ></div>
+                        <span class="font-medium text-gray-900">
+                          {player.name}
+                        </span>
                       </div>
-                    )}
-                  </For>
-                </div>
+                      <button
+                        onClick={() => {
+                          const newPlayers = players().filter(
+                            (_, i) => i !== index()
+                          );
+                          setPlayers(newPlayers);
+                        }}
+                        class="text-red-600 hover:text-red-700 text-sm font-medium"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  )}
+                </For>
               </div>
-            )}
+            </div>
+          )}
 
-            <button
-              onClick={handleStartGame}
-              disabled={players().length === 0 || isCreating()}
-              class="w-full min-h-[44px] bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition-colors"
-            >
-              {isCreating() ? "Creating Game..." : "Start Game"}
-            </button>
-          </div>
-        )}
+          <button
+            onClick={handleStartGame}
+            disabled={players().length === 0 || isCreating()}
+            class="w-full min-h-[44px] bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+          >
+            {isCreating() ? "Creating Game..." : "Start Game"}
+          </button>
+        </div>
       </div>
     </main>
   );

@@ -9,6 +9,7 @@ import {
   addScore as aS,
   updateCurrentHole as uCH,
   getAverageScoreForHole as gASFH,
+  addHole as aH,
 } from "./server";
 
 export const getUser = query(gU, "user");
@@ -20,3 +21,4 @@ export const addPlayer = action(aP, "addPlayer");
 export const addScore = action(aS, "addScore");
 export const updateCurrentHole = action(uCH, "updateCurrentHole");
 export const getAverageScoreForHole = query(gASFH, "getAverageScoreForHole");
+export const addHole = action(aH, "addHole");

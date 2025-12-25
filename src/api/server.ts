@@ -95,7 +95,7 @@ function generateShortCode(): string {
   return code;
 }
 
-export async function createGame(numHoles: number) {
+export async function createGame() {
   try {
     let shortCode = generateShortCode();
     let attempts = 0;
@@ -120,7 +120,7 @@ export async function createGame(numHoles: number) {
       .insert(Games)
       .values({
         shortCode,
-        numHoles,
+        numHoles: 1, // Start with 1 hole, add more as needed
         currentHole: 1,
       })
       .returning()
@@ -244,4 +244,28 @@ export async function getAverageScoreForHole(
 
   const sum = scores.reduce((acc, s) => acc + s.score, 0);
   return Math.floor(sum / scores.length);
+}
+
+export async function addHole(gameId: number) {
+  const game = db
+    .select()
+    .from(Games)
+    .where(eq(Games.id, gameId))
+    .get();
+  
+  if (!game) {
+    throw new Error("Game not found");
+  }
+
+  const newHoleNumber = game.numHoles + 1;
+  
+  return db
+    .update(Games)
+    .set({ 
+      numHoles: newHoleNumber,
+      currentHole: newHoleNumber 
+    })
+    .where(eq(Games.id, gameId))
+    .returning()
+    .get();
 }

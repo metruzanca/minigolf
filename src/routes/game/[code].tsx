@@ -12,6 +12,7 @@ import {
   updateCurrentHole,
   addPlayer,
   getAverageScoreForHole,
+  addHole,
 } from "~/api";
 import type { RouteDefinition } from "@solidjs/router";
 import { addGameCode } from "~/utils/gameStorage";
@@ -54,6 +55,7 @@ export default function Game() {
   const addScoreAction = useAction(addScore);
   const updateCurrentHoleAction = useAction(updateCurrentHole);
   const addPlayerAction = useAction(addPlayer);
+  const addHoleAction = useAction(addHole);
 
   // Force refresh signal to trigger query revalidation
   const [refreshKey, setRefreshKey] = createSignal(0);
@@ -75,6 +77,7 @@ export default function Game() {
   const [completedPlayersCollapsed, setCompletedPlayersCollapsed] =
     createSignal(true);
   const [showMenu, setShowMenu] = createSignal(false);
+  const [showSummaryModal, setShowSummaryModal] = createSignal(false);
   const [editingScore, setEditingScore] = createSignal<{
     playerId: number;
     playerName: string;
@@ -118,8 +121,6 @@ export default function Game() {
     }
   });
 
-  const [isAutoAdvancing, setIsAutoAdvancing] = createSignal(false);
-
   const handleScore = async (
     playerId: number,
     score: number,
@@ -137,31 +138,23 @@ export default function Game() {
     if (closeModal) {
       setEditingScore(null);
     }
+  };
 
-    // Actions automatically revalidate queries, so gameData will update
-    // Check for auto-advance after a brief delay to allow data to refresh
-    if (hole === game.currentHole && !isAutoAdvancing()) {
-      setTimeout(() => {
-        const updatedGame = gameData();
-        if (!updatedGame) return;
+  const handleAddHole = async () => {
+    const game = gameData();
+    if (!game) return;
 
-        const players = updatedGame.players;
-        const scores = updatedGame.scores.filter((s) => s.holeNumber === hole);
+    await addHoleAction(game.id);
+    setRefreshKey((prev) => prev + 1);
 
-        // Check if all players have scores for this hole
-        if (scores.length === players.length && hole < updatedGame.numHoles) {
-          setIsAutoAdvancing(true);
-          // Auto-advance to next hole
-          const nextHole = hole + 1;
-          updateCurrentHoleAction(updatedGame.id, nextHole).then(() => {
-            // Action will automatically revalidate, so gameData will update
-            setViewingHole(nextHole);
-            setSearchParams({ hole: nextHole.toString() });
-            setIsAutoAdvancing(false);
-          });
-        }
-      }, 200);
-    }
+    // Navigate to the new hole after a brief delay to allow data to refresh
+    setTimeout(() => {
+      const updatedGame = gameData();
+      if (updatedGame) {
+        setViewingHole(updatedGame.currentHole);
+        setSearchParams({ hole: updatedGame.currentHole.toString() });
+      }
+    }, 200);
   };
 
   const handleAddPlayer = async () => {
@@ -258,6 +251,71 @@ export default function Game() {
       });
   };
 
+  // Get score for a specific player and hole
+  const getScoreForHole = (playerId: number, holeNumber: number) => {
+    const g = game();
+    if (!g) return null;
+    const score = g.scores.find(
+      (s) => s.playerId === playerId && s.holeNumber === holeNumber
+    );
+    return score ? score.score : null;
+  };
+
+  // Get average score for a player
+  const getAverageScore = (playerId: number) => {
+    const g = game();
+    if (!g) return 0;
+    const playerScores = g.scores.filter(
+      (s) => s.playerId === playerId && s.holeNumber < currentHole()
+    );
+    if (playerScores.length === 0) return 0;
+    const total = playerScores.reduce((sum, s) => sum + s.score, 0);
+    return Math.round((total / playerScores.length) * 10) / 10;
+  };
+
+  // Summary-specific functions that include the viewing hole
+  const getSummaryTotalScore = (playerId: number) => {
+    const g = game();
+    if (!g) return 0;
+    return g.scores
+      .filter(
+        (s) => s.playerId === playerId && s.holeNumber <= viewingHoleNum()
+      )
+      .reduce((sum, s) => sum + s.score, 0);
+  };
+
+  const getSummaryAverageScore = (playerId: number) => {
+    const g = game();
+    if (!g) return 0;
+    const playerScores = g.scores.filter(
+      (s) => s.playerId === playerId && s.holeNumber <= viewingHoleNum()
+    );
+    if (playerScores.length === 0) return 0;
+    const total = playerScores.reduce((sum, s) => sum + s.score, 0);
+    return Math.round((total / playerScores.length) * 10) / 10;
+  };
+
+  const getSummaryPlayers = () => {
+    const g = game();
+    if (!g) return [];
+
+    return g.players
+      .map((player) => ({
+        player,
+        totalScore: getSummaryTotalScore(player.id),
+        holesPlayed: g.scores.filter(
+          (s) => s.playerId === player.id && s.holeNumber <= viewingHoleNum()
+        ).length,
+      }))
+      .sort((a, b) => {
+        if (a.totalScore !== b.totalScore) {
+          return a.totalScore - b.totalScore;
+        }
+        // Tie-breaker: fewer holes played is better
+        return a.holesPlayed - b.holesPlayed;
+      });
+  };
+
   return (
     <main class="min-h-screen bg-gray-50">
       <Show
@@ -343,7 +401,9 @@ export default function Game() {
             {/* Scoreboard */}
             <div class="bg-white border-b border-gray-200 p-4 sticky top-[60px] z-10">
               <div class="max-w-2xl mx-auto">
-                <h1 class="text-xl font-bold text-gray-900 mb-3">Scoreboard</h1>
+                <h1 class="text-xl font-bold text-gray-900 mb-3">
+                  Hole {viewingHoleNum()}
+                </h1>
                 <div class="overflow-x-auto -mx-4 px-4">
                   <div class="flex gap-3 min-w-max pb-2">
                     <For each={getScoreboardPlayers()}>
@@ -367,15 +427,6 @@ export default function Game() {
                     </For>
                   </div>
                 </div>
-              </div>
-            </div>
-
-            {/* Current Hole Display */}
-            <div class="bg-white border-b border-gray-200 p-4">
-              <div class="max-w-2xl mx-auto text-center">
-                <h2 class="text-2xl font-bold text-gray-900">
-                  Hole {viewingHoleNum()} of {g().numHoles}
-                </h2>
               </div>
             </div>
 
@@ -492,6 +543,36 @@ export default function Game() {
                   </Show>
                 </div>
               </Show>
+
+              {/* Add Hole / Summary Card - Show when all players have scores */}
+              <Show
+                when={
+                  getPlayersWithScores().active.length === 0 &&
+                  getPlayersWithScores().completed.length ===
+                    g().players.length &&
+                  g().players.length > 0
+                }
+              >
+                <div class="bg-white border-2 border-blue-500 rounded-lg p-6 space-y-4">
+                  <h3 class="text-lg font-semibold text-gray-900 text-center">
+                    All players have completed this hole
+                  </h3>
+                  <div class="flex gap-3">
+                    <button
+                      onClick={handleAddHole}
+                      class="flex-1 min-h-[44px] bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+                    >
+                      Add Hole
+                    </button>
+                    <button
+                      onClick={() => setShowSummaryModal(true)}
+                      class="flex-1 min-h-[44px] bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+                    >
+                      Summary
+                    </button>
+                  </div>
+                </div>
+              </Show>
             </div>
 
             {/* Add Player Modal */}
@@ -601,6 +682,186 @@ export default function Game() {
                   </div>
                 </div>
               )}
+            </Show>
+
+            {/* Summary Modal */}
+            <Show when={showSummaryModal()}>
+              <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+                <div class="bg-white rounded-lg p-6 max-w-4xl w-full my-8 space-y-6">
+                  <div class="flex items-center justify-between">
+                    <h3 class="text-2xl font-bold text-gray-900">
+                      Game Summary
+                    </h3>
+                    <button
+                      onClick={() => setShowSummaryModal(false)}
+                      class="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors"
+                      aria-label="Close"
+                    >
+                      <svg
+                        class="w-6 h-6"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Overall Standings */}
+                  <div>
+                    <h4 class="text-lg font-semibold text-gray-900 mb-3">
+                      Overall Standings
+                    </h4>
+                    <div class="space-y-2">
+                      <For each={getSummaryPlayers()}>
+                        {(item, index) => (
+                          <div
+                            class="flex items-center gap-4 p-3 rounded-lg border-2"
+                            style={{
+                              "border-color": item.player.ballColor,
+                              "background-color": `${item.player.ballColor}15`,
+                            }}
+                          >
+                            <div
+                              class="flex items-center justify-center w-8 h-8 rounded-full font-bold text-white text-sm"
+                              style={{
+                                "background-color": item.player.ballColor,
+                              }}
+                            >
+                              {index() + 1}
+                            </div>
+                            <div
+                              class="w-6 h-6 rounded-full border-2 border-gray-300"
+                              style={{
+                                "background-color": item.player.ballColor,
+                              }}
+                            ></div>
+                            <div class="flex-1">
+                              <p class="font-semibold text-gray-900">
+                                {item.player.name}
+                              </p>
+                              <p class="text-sm text-gray-600">
+                                {item.holesPlayed} hole
+                                {item.holesPlayed !== 1 ? "s" : ""} • Avg:{" "}
+                                {getSummaryAverageScore(item.player.id)}
+                              </p>
+                            </div>
+                            <div class="text-right">
+                              <p class="text-2xl font-bold text-gray-900">
+                                {item.totalScore}
+                              </p>
+                              <p class="text-xs text-gray-500">Total</p>
+                            </div>
+                          </div>
+                        )}
+                      </For>
+                    </div>
+                  </div>
+
+                  {/* Per-Hole Breakdown */}
+                  <div>
+                    <h4 class="text-lg font-semibold text-gray-900 mb-3">
+                      Per-Hole Breakdown
+                    </h4>
+                    <div class="overflow-x-auto">
+                      <table class="w-full border-collapse">
+                        <thead>
+                          <tr class="bg-gray-100">
+                            <th class="text-left p-2 font-semibold text-gray-900 sticky left-0 bg-gray-100 z-10">
+                              Player
+                            </th>
+                            <For
+                              each={Array.from(
+                                { length: viewingHoleNum() },
+                                (_, i) => i + 1
+                              )}
+                            >
+                              {(holeNum) => (
+                                <th class="text-center p-2 font-semibold text-gray-900 min-w-[50px]">
+                                  H{holeNum}
+                                </th>
+                              )}
+                            </For>
+                            <th class="text-center p-2 font-semibold text-gray-900 bg-gray-100">
+                              Total
+                            </th>
+                            <th class="text-center p-2 font-semibold text-gray-900 bg-gray-100">
+                              Avg
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <For each={getSummaryPlayers()}>
+                            {(item) => (
+                              <tr class="border-b border-gray-200 hover:bg-gray-50">
+                                <td class="p-2 sticky left-0 bg-white z-10">
+                                  <div class="flex items-center gap-2">
+                                    <div
+                                      class="w-4 h-4 rounded-full border border-gray-300"
+                                      style={{
+                                        "background-color":
+                                          item.player.ballColor,
+                                      }}
+                                    ></div>
+                                    <span class="font-medium text-gray-900">
+                                      {item.player.name}
+                                    </span>
+                                  </div>
+                                </td>
+                                <For
+                                  each={Array.from(
+                                    { length: viewingHoleNum() },
+                                    (_, i) => i + 1
+                                  )}
+                                >
+                                  {(holeNum) => {
+                                    const score = getScoreForHole(
+                                      item.player.id,
+                                      holeNum
+                                    );
+                                    return (
+                                      <td class="text-center p-2">
+                                        {score !== null ? (
+                                          <span class="font-semibold text-gray-900">
+                                            {score}
+                                          </span>
+                                        ) : (
+                                          <span class="text-gray-400">-</span>
+                                        )}
+                                      </td>
+                                    );
+                                  }}
+                                </For>
+                                <td class="text-center p-2 font-bold text-gray-900 bg-gray-50">
+                                  {item.totalScore}
+                                </td>
+                                <td class="text-center p-2 font-semibold text-gray-700 bg-gray-50">
+                                  {getSummaryAverageScore(item.player.id)}
+                                </td>
+                              </tr>
+                            )}
+                          </For>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div class="flex justify-end">
+                    <button
+                      onClick={() => setShowSummaryModal(false)}
+                      class="min-h-[44px] px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              </div>
             </Show>
           </>
         )}
