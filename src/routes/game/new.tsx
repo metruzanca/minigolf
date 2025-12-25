@@ -1,4 +1,4 @@
-import { createSignal, For } from "solid-js";
+import { createSignal, For, Show } from "solid-js";
 import { useNavigate, useAction } from "@solidjs/router";
 import { createGame, addPlayer } from "~/api";
 import type { RouteDefinition } from "@solidjs/router";
@@ -16,17 +16,19 @@ export default function NewGame() {
   const createGameAction = useAction(createGame);
   const addPlayerAction = useAction(addPlayer);
   const [players, setPlayers] = createSignal<PlayerInput[]>([]);
-  const [currentPlayerName, setCurrentPlayerName] = createSignal("");
-  const [currentPlayerColor, setCurrentPlayerColor] = createSignal("#FF0000");
+  const [showAddPlayerModal, setShowAddPlayerModal] = createSignal(false);
+  const [newPlayerName, setNewPlayerName] = createSignal("");
+  const [newPlayerColor, setNewPlayerColor] = createSignal("#FF0000");
   const [isCreating, setIsCreating] = createSignal(false);
 
   const handleAddPlayer = () => {
-    const name = currentPlayerName().trim();
+    const name = newPlayerName().trim();
     if (!name) return;
 
-    setPlayers([...players(), { name, ballColor: currentPlayerColor() }]);
-    setCurrentPlayerName("");
-    setCurrentPlayerColor("#FF0000");
+    setPlayers([...players(), { name, ballColor: newPlayerColor() }]);
+    setNewPlayerName("");
+    setNewPlayerColor("#FF0000");
+    setShowAddPlayerModal(false);
   };
 
   const handleStartGame = async () => {
@@ -75,45 +77,12 @@ export default function NewGame() {
         </div>
 
         <div class="space-y-6">
-          <div>
-            <label
-              for="playerName"
-              class="block text-sm font-medium text-gray-700 mb-2"
-            >
-              Player Name
-            </label>
-            <input
-              id="playerName"
-              type="text"
-              value={currentPlayerName()}
-              onInput={(e) => setCurrentPlayerName(e.currentTarget.value)}
-              onKeyPress={(e) => e.key === "Enter" && handleAddPlayer()}
-              placeholder="Enter player name"
-              class="w-full min-h-[44px] px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mb-3"
-            />
-            <div class="flex items-center gap-4 mb-3">
-              <label
-                for="ballColor"
-                class="block text-sm font-medium text-gray-700"
-              >
-                Ball Color
-              </label>
-              <input
-                id="ballColor"
-                type="color"
-                value={currentPlayerColor()}
-                onInput={(e) => setCurrentPlayerColor(e.currentTarget.value)}
-                class="h-10 w-20 border border-gray-300 rounded cursor-pointer"
-              />
-            </div>
-            <button
-              onClick={handleAddPlayer}
-              disabled={!currentPlayerName().trim()}
-              class="w-full min-h-[44px] bg-gray-600 hover:bg-gray-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold py-2 px-4 rounded-lg transition-colors"
-            >
-              Add Player
-            </button>
-          </div>
+          <button
+            onClick={() => setShowAddPlayerModal(true)}
+            class="w-full min-h-[44px] bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+          >
+            Add Player
+          </button>
 
           {players().length > 0 && (
             <div class="space-y-2">
@@ -160,6 +129,66 @@ export default function NewGame() {
           </button>
         </div>
       </div>
+
+      {/* Add Player Modal */}
+      <Show when={showAddPlayerModal()}>
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div class="bg-white rounded-lg p-6 max-w-md w-full space-y-4">
+            <h3 class="text-xl font-bold text-gray-900">Add Player</h3>
+            <div>
+              <label
+                for="newPlayerName"
+                class="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Player Name
+              </label>
+              <input
+                id="newPlayerName"
+                type="text"
+                value={newPlayerName()}
+                onInput={(e) => setNewPlayerName(e.currentTarget.value)}
+                onKeyPress={(e) => e.key === "Enter" && handleAddPlayer()}
+                placeholder="Enter player name"
+                class="w-full min-h-[44px] px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label
+                for="newPlayerColor"
+                class="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Ball Color
+              </label>
+              <input
+                id="newPlayerColor"
+                type="color"
+                value={newPlayerColor()}
+                onInput={(e) => setNewPlayerColor(e.currentTarget.value)}
+                class="h-10 w-full border border-gray-300 rounded cursor-pointer"
+              />
+            </div>
+            <div class="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowAddPlayerModal(false);
+                  setNewPlayerName("");
+                  setNewPlayerColor("#FF0000");
+                }}
+                class="flex-1 min-h-[44px] bg-gray-200 hover:bg-gray-300 text-gray-900 font-semibold py-2 px-4 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddPlayer}
+                disabled={!newPlayerName().trim()}
+                class="flex-1 min-h-[44px] bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+              >
+                Add
+              </button>
+            </div>
+          </div>
+        </div>
+      </Show>
     </main>
   );
 }
