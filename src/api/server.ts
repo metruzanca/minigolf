@@ -481,3 +481,12 @@ export async function updatePlayer(
 
   return updatedPlayer;
 }
+
+export async function checkGameExists(shortCode: string) {
+  const game = await db
+    .select({ id: Games.id })
+    .from(Games)
+    .where(eq(Games.shortCode, shortCode))
+    .get();
+  return !!game;
+}
