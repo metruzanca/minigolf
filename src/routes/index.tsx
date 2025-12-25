@@ -3,6 +3,7 @@ import type { RouteDefinition } from "@solidjs/router";
 import { createSignal, For, onMount, Show } from "solid-js";
 import { getStoredGameCodes, removeGameCode } from "~/utils/gameStorage";
 import { Meta } from "@solidjs/meta";
+import { checkGameExists } from "~/api/server";
 
 export const route = {} satisfies RouteDefinition;
 
@@ -13,6 +14,12 @@ export default function Home() {
     Array<{ code: string; createdAt: string }>
   >([]);
 
+  // Join Modal State
+  const [showJoinModal, setShowJoinModal] = createSignal(false);
+  const [joinCode, setJoinCode] = createSignal("");
+  const [joinError, setJoinError] = createSignal("");
+  const [isJoining, setIsJoining] = createSignal(false);
+
   // Load stored game codes on mount
   onMount(() => {
     setStoredGameCodes(getStoredGameCodes());
@@ -21,6 +28,34 @@ export default function Home() {
   const handleRemoveGameCode = (code: string) => {
     removeGameCode(code);
     setStoredGameCodes(getStoredGameCodes());
+  };
+
+  const handleJoinGame = async (e: Event) => {
+    e.preventDefault();
+    const code = joinCode().trim().toUpperCase();
+    if (!code) {
+      setJoinError("Please enter a game code");
+      return;
+    }
+
+    setIsJoining(true);
+    setJoinError("");
+
+    try {
+      const exists = await checkGameExists(code);
+      if (exists) {
+        navigate(`/game/${code}`);
+        setShowJoinModal(false);
+        setJoinCode("");
+      } else {
+        setJoinError("Game not found");
+      }
+    } catch (err) {
+      console.error(err);
+      setJoinError("Error checking game code");
+    } finally {
+      setIsJoining(false);
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -139,12 +174,25 @@ export default function Home() {
             )}
           </Show>
 
-          <button
-            onClick={() => navigate("/game/new")}
-            class="w-full min-h-[44px] bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
-          >
-            Create New Game
-          </button>
+          <div class="space-y-4">
+            <button
+              onClick={() => navigate("/game/new")}
+              class="w-full min-h-[44px] bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+            >
+              Create New Game
+            </button>
+
+            <button
+              onClick={() => {
+                setJoinCode("");
+                setJoinError("");
+                setShowJoinModal(true);
+              }}
+              class="w-full min-h-[44px] bg-white dark:bg-gray-800 border-2 border-blue-600 dark:border-blue-500 text-blue-600 dark:text-blue-500 hover:bg-blue-50 dark:hover:bg-gray-700 font-semibold py-3 px-6 rounded-lg transition-colors"
+            >
+              Open Existing Game
+            </button>
+          </div>
 
           {/* Stored Game Codes */}
           {storedGameCodes().length > 0 && (
@@ -193,6 +241,59 @@ export default function Home() {
           </a>
         </div>
       </main>
+
+      {/* Join Game Modal */}
+      <Show when={showJoinModal()}>
+        <div 
+          class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          onClick={() => setShowJoinModal(false)}
+        >
+          <div 
+            class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-sm w-full p-6 space-y-4 animate-in fade-in zoom-in duration-200"
+            onClick={e => e.stopPropagation()}
+          >
+            <h2 class="text-xl font-bold text-gray-900 dark:text-white">Join Game</h2>
+            <form onSubmit={handleJoinGame} class="space-y-4">
+              <div>
+                <label for="gameCode" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Game Code
+                </label>
+                <input
+                  id="gameCode"
+                  type="text"
+                  value={joinCode()}
+                  onInput={(e) => setJoinCode(e.currentTarget.value.toUpperCase())}
+                  placeholder="Enter 6-character code"
+                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none uppercase font-mono"
+                  maxLength={6}
+                  disabled={isJoining()}
+                  autofocus
+                />
+                <Show when={joinError()}>
+                  <p class="mt-1 text-sm text-red-600 dark:text-red-400">{joinError()}</p>
+                </Show>
+              </div>
+              <div class="flex space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setShowJoinModal(false)}
+                  class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium transition-colors"
+                  disabled={isJoining()}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isJoining()}
+                  class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
+                >
+                  {isJoining() ? "Checking..." : "Open Game"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </Show>
     </>
   );
 }
