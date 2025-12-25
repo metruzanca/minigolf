@@ -81,7 +81,14 @@ export default function Home() {
             : "https://minigolf.up.railway.app"
         }
       />
-      <Meta property="og:image" content="/favicon.svg" />
+      <Meta
+        property="og:image"
+        content={
+          typeof window !== "undefined"
+            ? `${window.location.origin}/favicon.svg`
+            : "https://minigolf.up.railway.app/favicon.svg"
+        }
+      />
       <Meta name="twitter:card" content="summary" />
       <Meta name="twitter:title" content="Minigolf Tracker" />
       <Meta

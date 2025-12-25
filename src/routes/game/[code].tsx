@@ -487,6 +487,10 @@ export default function Game() {
             typeof window !== "undefined"
               ? window.location.href
               : `https://minigolf.up.railway.app/game/${g().shortCode}`;
+          const baseUrl =
+            typeof window !== "undefined"
+              ? window.location.origin
+              : "https://minigolf.up.railway.app";
 
           return (
             <>
@@ -494,7 +498,7 @@ export default function Game() {
               <Meta property="og:description" content={scoreText} />
               <Meta property="og:type" content="website" />
               <Meta property="og:url" content={gameUrl} />
-              <Meta property="og:image" content="/favicon.svg" />
+              <Meta property="og:image" content={`${baseUrl}/favicon.svg`} />
               <Meta name="twitter:card" content="summary" />
               <Meta name="twitter:title" content={gameTitle} />
               <Meta name="twitter:description" content={scoreText} />
