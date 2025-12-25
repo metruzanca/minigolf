@@ -21,7 +21,7 @@ function validatePassword(password: unknown) {
 }
 
 async function login(username: string, password: string) {
-  const user = db
+  const user = await db
     .select()
     .from(Users)
     .where(eq(Users.username, username))
@@ -31,13 +31,13 @@ async function login(username: string, password: string) {
 }
 
 async function register(username: string, password: string) {
-  const existingUser = db
+  const existingUser = await db
     .select()
     .from(Users)
     .where(eq(Users.username, username))
     .get();
   if (existingUser) throw new Error("User already exists");
-  return db.insert(Users).values({ username, password }).returning().get();
+  return (await db.insert(Users).values({ username, password }).returning().get());
 }
 
 function getSession() {
@@ -80,7 +80,7 @@ export async function getUser() {
   if (userId === undefined) throw redirect("/login");
 
   try {
-    const user = db.select().from(Users).where(eq(Users.id, userId)).get();
+    const user = await db.select().from(Users).where(eq(Users.id, userId)).get();
     if (!user) throw redirect("/login");
     return { id: user.id, username: user.username };
   } catch {
@@ -105,7 +105,7 @@ export async function createGame() {
 
     // Check for collisions (max 10 attempts)
     while (attempts < 10) {
-      const existing = db
+      const existing = await db
         .select()
         .from(Games)
         .where(eq(Games.shortCode, shortCode))
@@ -119,7 +119,7 @@ export async function createGame() {
       throw new Error("Failed to generate unique short code");
     }
 
-    const game = db
+    const game = await db
       .insert(Games)
       .values({
         shortCode,
@@ -138,7 +138,7 @@ export async function createGame() {
 }
 
 export async function getGame(shortCode: string) {
-  const game = db
+  const game = await db
     .select()
     .from(Games)
     .where(eq(Games.shortCode, shortCode))
@@ -147,12 +147,12 @@ export async function getGame(shortCode: string) {
     throw new Error("Game not found");
   }
 
-  const players = db
+  const players = await db
     .select()
     .from(Players)
     .where(eq(Players.gameId, game.id))
     .all();
-  const scores = db
+  const scores = await db
     .select()
     .from(Scores)
     .where(eq(Scores.gameId, game.id))
@@ -190,7 +190,7 @@ export async function addPlayer(
   }
 
   // Verify game exists
-  const game = db
+  const game = await db
     .select()
     .from(Games)
     .where(eq(Games.id, gameId))
@@ -199,7 +199,7 @@ export async function addPlayer(
     throw new Error("Game not found");
   }
 
-  const player = db
+  const player = await db
     .insert(Players)
     .values({
       gameId,
@@ -234,7 +234,7 @@ export async function addScore(
   }
 
   // Verify game exists
-  const game = db
+  const game = await db
     .select()
     .from(Games)
     .where(eq(Games.id, gameId))
@@ -249,7 +249,7 @@ export async function addScore(
   }
 
   // Verify player belongs to this game
-  const player = db
+  const player = await db
     .select()
     .from(Players)
     .where(and(eq(Players.id, playerId), eq(Players.gameId, gameId)))
@@ -259,7 +259,7 @@ export async function addScore(
   }
 
   // Check if score already exists for this player/hole
-  const existing = db
+  const existing = await db
     .select()
     .from(Scores)
     .where(
@@ -273,7 +273,7 @@ export async function addScore(
 
   if (existing) {
     // Update existing score
-    return db
+    return await db
       .update(Scores)
       .set({ score })
       .where(eq(Scores.id, existing.id))
@@ -281,7 +281,7 @@ export async function addScore(
       .get();
   } else {
     // Insert new score
-    return db
+    return await db
       .insert(Scores)
       .values({
         playerId,
@@ -331,7 +331,7 @@ export async function getAverageScoreForHole(
   gameId: number,
   holeNumber: number
 ): Promise<number> {
-  const scores = db
+  const scores = await db
     .select()
     .from(Scores)
     .where(and(eq(Scores.gameId, gameId), eq(Scores.holeNumber, holeNumber)))
@@ -350,7 +350,7 @@ export async function addHole(gameId: number) {
   }
 
   // Verify game exists
-  const game = db
+  const game = await db
     .select()
     .from(Games)
     .where(eq(Games.id, gameId))
@@ -362,7 +362,7 @@ export async function addHole(gameId: number) {
 
   const newHoleNumber = game.numHoles + 1;
   
-  return db
+  return await db
     .update(Games)
     .set({ 
       numHoles: newHoleNumber,

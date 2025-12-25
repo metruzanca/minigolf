@@ -6,10 +6,9 @@
     "build": "vinxi build",
     "prestart": "drizzle-kit push",
     "start": "vinxi start",
-    "dev:fresh": "rm drizzle/db.sqlite && npx drizzle-kit push && vinxi dev"
+    "dev:fresh": "rm drizzle/db.sqlite && bunx drizzle-kit push && vinxi dev"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.10",
     "@types/node": "^24.7.0",
     "autoprefixer": "^10.4.23",
     "drizzle-kit": "^0.22.7",
@@ -17,10 +16,10 @@
     "tailwindcss": "^4.1.18"
   },
   "dependencies": {
+    "@libsql/client": "^0.14.0",
     "@solidjs/router": "^0.15.0",
     "@solidjs/start": "^1.1.0",
     "@tailwindcss/vite": "^4.1.18",
-    "better-sqlite3": "^11.0.0",
     "drizzle-orm": "^0.31.2",
     "solid-js": "^1.9.5",
     "solid-motionone": "^1.0.4",
