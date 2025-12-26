@@ -73,7 +73,7 @@ export default function Game() {
   const [refreshKey, setRefreshKey] = createSignal(0);
 
   // Use createResource with refreshKey as source to ensure re-fetch on changes
-  const [gameData] = createResource(
+  const [gameData, { mutate }] = createResource(
     () => ({ code: params.code, refresh: refreshKey() }),
     async ({ code }) => {
       if (!code) {
@@ -260,17 +260,46 @@ export default function Game() {
     if (!game) return;
 
     const hole = viewingHole();
+
+    // OPTIMISTIC UPDATE START
+    const optimisticScore: Score = {
+      id: -Date.now(), // Temporary ID using timestamp
+      playerId,
+      holeNumber: hole,
+      score,
+    };
+
+    const prevGame = JSON.parse(JSON.stringify(game));
+
+    mutate((prev) => {
+      if (!prev) return prev;
+      // Remove existing score for this player/hole if any
+      const newScores = prev.scores.filter(
+        (s) => !(s.playerId === playerId && s.holeNumber === hole)
+      );
+      return {
+        ...prev,
+        scores: [...newScores, optimisticScore],
+      };
+    });
+
+    if (closeModal) {
+      setEditingScore(null);
+    }
+    // OPTIMISTIC UPDATE END
+
     try {
       await addScoreAction(playerId, game.id, hole, score);
 
       // Force query refresh by updating the refresh key
       setRefreshKey((prev) => prev + 1);
-
-      if (closeModal) {
-        setEditingScore(null);
-      }
     } catch (error) {
       console.error("Failed to add score:", error);
+
+      // Revert optimistic update
+      mutate(prevGame);
+      setRefreshKey((prev) => prev + 1);
+
       const errorMessage =
         error instanceof Error ? error.message : "Failed to add score";
       alert(errorMessage);
@@ -281,19 +310,34 @@ export default function Game() {
     const game = gameData();
     if (!game) return;
 
+    // OPTIMISTIC UPDATE START
+    const prevGame = JSON.parse(JSON.stringify(game));
+
+    mutate((prev) => {
+      if (!prev) return prev;
+      const nextHole = prev.numHoles + 1;
+      return {
+        ...prev,
+        numHoles: nextHole,
+        currentHole: nextHole,
+      };
+    });
+
+    // Navigate immediately
+    navigateToHole(game.numHoles + 1, "forward");
+    // OPTIMISTIC UPDATE END
+
     try {
       await addHoleAction(game.id);
       setRefreshKey((prev) => prev + 1);
-
-      // Navigate to the new hole after a brief delay to allow data to refresh
-      setTimeout(() => {
-        const updatedGame = gameData();
-        if (updatedGame) {
-          navigateToHole(updatedGame.currentHole, "forward");
-        }
-      }, 200);
     } catch (error) {
       console.error("Failed to add hole:", error);
+
+      // Revert optimistic update
+      mutate(prevGame);
+      navigateToHole(prevGame.currentHole, "backward");
+      setRefreshKey((prev) => prev + 1);
+
       const errorMessage =
         error instanceof Error ? error.message : "Failed to add hole";
       alert(errorMessage);
