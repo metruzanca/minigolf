@@ -1,32 +1,34 @@
-# SolidStart
+# Minigolf scoreboard
 
-Everything you need to build a Solid project, powered by [`solid-start`](https://start.solidjs.com);
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/owf6o3?referralCode=XR5Br6&utm_medium=integration&utm_source=template&utm_campaign=generic)
 
-## Creating a project
+Track minigolf scores for your group without any hassle. Create a game, share the code with your friends, and start keeping score. Everyone can add players, enter scores, and see the live scoreboard. If someone joins mid-game, they'll automatically get the average score for holes already played. No sign-ups, no accounts, just open the link and play.
 
-```bash
-# create a new project in the current directory
-npm init solid@latest
+Since theres no accounts, you can use my live version at https://minigolf.up.railway.app, but if you prefer you can self-host your own. I've made a one-click railway deploy for your convenience.
 
-# create a new project in my-app
-npm init solid@latest my-app
-```
+<details>
 
-## Developing
+<summary>Self-hosting details</summary>
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+if you want to host this elsewhere, all you need is bun and run `bun install && bun build` and then `bun start` will handle database migrations and starting the built server. If you want persistance, all data is stored in ./drizzle. You can run this on a VPS or in a docker container. A PORT env var can be used to change the server's port.
 
-```bash
-npm run dev
+</details>
 
-# or start the server and open the app in a new browser tab
-npm run dev
-```
+## Features
 
-## Building
+- **Create and manage games** - Start a new game with a unique code that can be shared with players
+- **Add/Edit players** - Add any number of players with custom names and ball colors
+- **Track/Edit scores** - Enter scores (1-10 shots) for each hole with a simple tap
+- **Dynamic holes** - Add more holes to a game as you play
+- **Live scoreboard** - View total scores and current rankings at a glance
+- **Game summary** - View overall standings, per-hole breakdown, and average scores
+- **Real-time updates** - (Finicky) Scores update automatically across all devices when someone enters a score
 
-Solid apps are built with _adapters_, which optimise your project for deployment to different environments.
+## Tech Stack
 
-By default, `npm run build` will generate a Node app that you can run with `npm start`. To use a different adapter, add it to the `devDependencies` in `package.json` and specify in your `app.config.js`.
-
-## This project was created with the [Solid CLI](https://github.com/solidjs-community/solid-cli)
+- [SolidJS](https://www.solidjs.com/) - Reactive UI framework
+- [SolidStart](https://start.solidjs.com/) - Full-stack framework
+- [Drizzle ORM](https://orm.drizzle.team/) - TypeScript ORM
+- [SQLite](https://www.sqlite.org/) - Database
+- [Tailwind CSS](https://tailwindcss.com/) - Styling
+- [Motion One](https://motion.dev/) - Animations
