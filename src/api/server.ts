@@ -1,10 +1,12 @@
 "use server";
 import { redirect } from "@solidjs/router";
 import { useSession } from "vinxi/http";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { db } from "./db";
 import { Users, Games, Players, Scores } from "../../drizzle/schema";
 import { gameEventEmitter } from "./eventEmitter";
+// Initialize cron jobs for cleanup tasks
+import "./cron";
 
 // Get MAX_SHOTS from environment variable, default to 10
 const MAX_SHOTS = parseInt(process.env.MAX_SHOTS || "10", 10) || 10;
@@ -489,4 +491,111 @@ export async function checkGameExists(shortCode: string) {
     .where(eq(Games.shortCode, shortCode))
     .get();
   return !!game;
+}
+
+/**
+ * Deletes stale games and their associated data (scores, players)
+ * A game is considered stale if it hasn't had any activity (scores, players, or creation) in 3+ days
+ */
+export async function deleteStaleGames() {
+  const threeDaysAgo = new Date();
+  threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+
+  try {
+    // Get all games with their most recent activity
+    const allGames = await db.select().from(Games).all();
+
+    const staleGameIds: number[] = [];
+
+    for (const game of allGames) {
+      // Find the most recent score for this game
+      const mostRecentScore = await db
+        .select({ createdAt: Scores.createdAt })
+        .from(Scores)
+        .where(eq(Scores.gameId, game.id))
+        .orderBy(desc(Scores.createdAt))
+        .limit(1)
+        .get();
+
+      // Find the most recent player for this game
+      const mostRecentPlayer = await db
+        .select({ createdAt: Players.createdAt })
+        .from(Players)
+        .where(eq(Players.gameId, game.id))
+        .orderBy(desc(Players.createdAt))
+        .limit(1)
+        .get();
+
+      // Determine the most recent activity
+      const activityDates: Date[] = [game.createdAt];
+
+      if (mostRecentScore?.createdAt) {
+        activityDates.push(mostRecentScore.createdAt);
+      }
+
+      if (mostRecentPlayer?.createdAt) {
+        activityDates.push(mostRecentPlayer.createdAt);
+      }
+
+      const mostRecentActivity = new Date(
+        Math.max(...activityDates.map((d) => d.getTime()))
+      );
+
+      // If the most recent activity was more than 3 days ago, mark as stale
+      if (mostRecentActivity < threeDaysAgo) {
+        staleGameIds.push(game.id);
+      }
+    }
+
+    if (staleGameIds.length === 0) {
+      console.log("No stale games to delete");
+      return { deleted: 0 };
+    }
+
+    // Delete in order: Scores -> Players -> Games (due to foreign key constraints)
+    let deletedScores = 0;
+    let deletedPlayers = 0;
+    let deletedGames = 0;
+
+    for (const gameId of staleGameIds) {
+      // Count scores before deleting
+      const scoresToDelete = await db
+        .select()
+        .from(Scores)
+        .where(eq(Scores.gameId, gameId))
+        .all();
+      deletedScores += scoresToDelete.length;
+
+      // Count players before deleting
+      const playersToDelete = await db
+        .select()
+        .from(Players)
+        .where(eq(Players.gameId, gameId))
+        .all();
+      deletedPlayers += playersToDelete.length;
+
+      // Delete all scores for this game
+      await db.delete(Scores).where(eq(Scores.gameId, gameId));
+
+      // Delete all players for this game
+      await db.delete(Players).where(eq(Players.gameId, gameId));
+
+      // Delete the game itself
+      await db.delete(Games).where(eq(Games.id, gameId));
+      deletedGames += 1;
+    }
+
+    console.log(
+      `Deleted ${deletedGames} stale game(s) with ${deletedPlayers} player(s) and ${deletedScores} score(s)`
+    );
+
+    return {
+      deleted: deletedGames,
+      players: deletedPlayers,
+      scores: deletedScores,
+    };
+  } catch (error) {
+    console.error("Error deleting stale games:", error);
+    throw error;
+  }
 }
